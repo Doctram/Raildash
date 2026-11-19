@@ -294,6 +294,7 @@ button:focus-visible{outline:4px solid var(--violet);outline-offset:3px}
       <div class="stat"><b id="oBest">0</b><small>Best</small></div>
     </div>
     <div class="row">
+      <button class="btn" id="contBtn" hidden>Continue</button>
       <button class="btn" id="againBtn">Run again</button>
       <button class="btn alt" id="overShopBtn">Shop</button>
     </div>
@@ -878,7 +879,7 @@ function buildCharacter(def) {
     box(0.09, 0.035, 0.025, guard, 0.05, -0.11, 0.04, gb);   // bridge
     box(0.05, 0.44, 0.035, neckM, 0.02, 0.4, 0, gb);         // neck, up over the shoulder
     [-0.011, 0.011].forEach(o => box(0.005, 0.42, 0.008, guard, 0.02 + o, 0.4, 0.023, gb));   // strings
-    const hs = box(0.085, 0.13, 0.03, neckM, 0.03, 0.68, 0, gb); hs.rotation.z = 0.2;
+    const hs = box(0.095, 0.14, 0.03, body, 0.03, 0.68, 0, gb); hs.rotation.z = 0.2;   // painted to match the body, so it reads against the track when it sticks out past his side
     [-0.018, 0.018].forEach((o, i) => box(0.015, 0.015, 0.045, guard, 0.03 + o, 0.68 + i * 0.035, 0.026, gb));
   }
   const limb = (x, y) => { const g = new THREE.Group(); g.position.set(x, y, 0); model.add(g); return g; };
@@ -1178,6 +1179,25 @@ function obsBone(parent, a, b, r) {
 
 // ---------- hell demon in the sky ----------
 const DEMON_Z = 300;
+// ---------- the demon's arm shape ----------
+// Each arm segment is a lathe: a side outline (how thick the arm is at each point along the bone) spun around the bone.
+// Pairs are [radius, height]; height runs 0 -> 1 from one joint to the next. Radii are fractions, so one outline fits any size:
+// the upper arm is measured against its shoulder radius, the forearm against its wrist radius.
+const ARM_UPPER = [[0.92, 0], [0.98, 0.12], [1.0, 0.36], [0.88, 0.62], [0.7, 0.84], [0.63, 1]];   // shoulder, bicep bulge, narrowing to the elbow
+const ARM_FORE = [[1.3, 0], [1.5, 0.12], [1.55, 0.3], [1.25, 0.6], [1.06, 0.86], [1.0, 1]];      // forearm muscle near the elbow, slim wrist
+const ARM_R = { shoulder: 5.2, wrist: 2.4, elbow: 3.6 };     // in the demon's own units; multiply by its scale for world size
+function armGeo(profile) {
+  const pts = [new THREE.Vector2(0, 0)].concat(profile.map(([r, y]) => new THREE.Vector2(r, y)), [new THREE.Vector2(0, 1)]);   // closed at both ends
+  return new THREE.LatheGeometry(pts, 20);
+}
+const ARM_UPPER_GEO = armGeo(ARM_UPPER), ARM_FORE_GEO = armGeo(ARM_FORE);
+function armRadiusAt(profile, h) {       // the outline's radius partway along a segment
+  for (let i = 1; i < profile.length; i++) if (h <= profile[i][1]) {
+    const [r0, y0] = profile[i - 1], [r1, y1] = profile[i];
+    return r0 + (r1 - r0) * (h - y0) / (y1 - y0);
+  }
+  return profile[profile.length - 1][0];
+}
 const demon = (() => {
   const root = new THREE.Group();
   const L = (c, e, extra) => new THREE.MeshLambertMaterial(Object.assign({ color: c, emissive: e, fog: false }, extra || {}));
@@ -1254,8 +1274,14 @@ const demon = (() => {
   const arms = [-1, 1].map(s => {
     const a = new THREE.Group(); a.position.set(s * 26, 60, 0); body.add(a);
     const E = V(s * 16, -16, 10), H = V(s * 10, 9, 26);
-    limb(V(0, 0, 0), E, 5.2, skin, a); limb(E, H, 4.2, skin, a);
-    put(sph, skin, E.x, E.y, E.z, [5, 5, 5], a);
+    a.userData.E = E; a.userData.H = H;                       // the reaching arm starts and ends exactly here
+    const shaped = (geo, A, B, r) => {
+      const v = new THREE.Vector3().subVectors(B, A), m = new THREE.Mesh(geo, skin);
+      m.position.copy(A); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), v.clone().normalize()); m.scale.set(r, v.length(), r);
+      a.add(m);
+    };
+    shaped(ARM_UPPER_GEO, V(0, 0, 0), E, ARM_R.shoulder); shaped(ARM_FORE_GEO, E, H, ARM_R.wrist);
+    put(sph, skin, E.x, E.y, E.z, [ARM_R.elbow, ARM_R.elbow, ARM_R.elbow], a);
     put(sph, skin2, H.x, H.y, H.z, [4.6, 4, 3.2], a);
     for (let k = 0; k < 4; k++) {
       const c = put(clawGeo, boneM, H.x + (k - 1.5) * 2.2 * s, H.y + 2.5, H.z + 1.5, null, a);
@@ -1280,6 +1306,10 @@ function animateDemon(dt, t) {
   dm.root.scale.setScalar(DMC.s);
   dm.body.scale.set(1 + Math.sin(t * 0.8) * 0.012, 1 + Math.sin(t * 0.8) * 0.02, 1);
   dm.body.position.set(0, -FX.kick * 5, FX.kick * 4);   // lurches into the blow
+  // while it attacks it sidles over and turns that shoulder toward you, so the reaching arm comes out over the
+  // track where you can see it join the body, instead of from behind the buildings that line the street
+  dm.root.position.x -= SL.side * DEMON_SLIDE * near;
+  dm.body.rotation.y = -SL.side * 0.3 * near;
   const attacking = SL.active && SL.phase !== 'approach' && SL.phase !== 'retreat';
   dm.body.rotation.x += ((attacking ? 0.22 : 0) - dm.body.rotation.x) * Math.min(1, dt * 3);
   let hy = Math.sin(t * 0.3) * 0.22, hx = 0.15;
@@ -1306,6 +1336,9 @@ function animateDemon(dt, t) {
 //  SWAT:  hand hovers at chest height beside you and swings across           -> roll under it
 const ATK_T = { approach: 1.7, look: 1.8, aim: 1.2, lock: 0.5, smash: 0.14, hold: 0.5, drop: 0.35, swing: 0.75, retreat: 1.9 };
 const DEMON_NEAR = { z: 78, s: 0.45, y: -14 }, DEMON_FAR = { z: DEMON_Z, s: 1, y: -8 };
+const DEMON_SLIDE = 9;        // how far it sidles across while attacking, so the reaching shoulder sits over the track
+const RAISE_T = 0.5;         // seconds for the claw to come up and over into the hover
+const RETURN_K = [0.3, 0.55]; // part of the retreat in which the hand travels back to the idle claw (then the idle arm takes over)
 const ROLL_CUE = 0.45;       // "ROLL!" shows this many seconds before the swat reaches you
 const SWAT_Y = 1.65;         // centre of the swatting hand: bottom ~1.05, top ~2.25
 const slapHand = (() => {
@@ -1357,22 +1390,22 @@ const slapHand = (() => {
   aura.scale.set(5.5, 5.5, 1); aura.position.set(0, 0, -0.6); g.add(aura);
   g.visible = false;
   scene.add(g);
-  return { g, aura, fingers, thumb, wristFire };
+  return { g, aura, fingers, thumb, wristFire, skin: skinH };
 })();
 // the reaching arm: upper arm, elbow and forearm, re-posed every frame
 const reachArm = (() => {
   const grp = new THREE.Group();
-  const seg = (rTop) => {
+  const seg = (geo) => {
     const holder = new THREE.Group();
-    const geo = new THREE.CylinderGeometry(rTop, 1, 1, 20, 6); geo.translate(0, 0.5, 0);
     const mat = skinMat(2, 6, 0xc49890, 1.0);
     const m = new THREE.Mesh(geo, mat); holder.add(m);
-    const glow = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xff4a10, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
-    m.add(glow); glow.scale.set(1.18, 1, 1.18);
+    // a thin hot rim, only a few percent wider than the arm so it doesn't fatten it
+    const glow = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xff4a10, transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+    m.add(glow); glow.scale.set(1.05, 1, 1.05);
     grp.add(holder);
-    return { holder, m, mat };
+    return { holder, m, mat, glow };
   };
-  const upper = seg(0.72), fore = seg(0.42);
+  const upper = seg(ARM_UPPER_GEO), fore = seg(ARM_FORE_GEO);
   const elbow = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), skinMat(2, 2, 0xc49890, 1.0)); grp.add(elbow);
   const spikeGeo = new THREE.ConeGeometry(1, 1, 8); spikeGeo.translate(0, 0.5, 0);
   const spikeM = new THREE.MeshPhongMaterial({ color: 0xd8c8b0, emissive: 0x1a120a, shininess: 70, fog: false });
@@ -1656,14 +1689,23 @@ function animateSlap(dt, t) {
   // hand pose
   shoulderPos(_sh);
   let rz = 0, ry = 0, rx = 0, sc = 1.2, curl = 0, sq = 0;
+  let turn = 1, blend = 1;      // 0 = exactly the idle claw (orientation / elbow and colour), 1 = the full reaching pose
   trail.visible = false;
   if (SL.kind === 'smash') {
     rz = Math.PI / 2; sc = 2.1;
     const hover = 7 + Math.sin(t * 3) * 0.3, TOPY = 11.5, X = LANES[SL.lane];
     if (ph === 'aim') {
       _a.set(SL.hx, hover, -(p.d + 4));
-      if (k < 0.35) H.position.lerpVectors(_sh, _a, easeK(k / 0.35)); else H.position.copy(_a);
       curl = -0.25 - 0.35 * k; rx = Math.sin(t * 2) * 0.08;
+      const u = SL.t / RAISE_T;
+      if (u < 1) {
+        // the raise: from the claw it already holds up, up and over in an arc, turning palm-down
+        idleClaw(_cl, _qIdle, _elIdle);
+        const e = heavyEase(u);
+        _ctl.set(_cl.x, Math.max(_cl.y, _a.y) + 10, _cl.z + (_a.z - _cl.z) * 0.35);    // the top of the arc
+        bezier(H.position, _cl, _ctl, _a, e);
+        turn = easeK(Math.min(1, e * 1.1)); blend = easeK(u); curl = -0.6 + (curl + 0.6) * turn;
+      } else H.position.copy(_a);
     } else if (ph === 'lock') {
       // wind-up: rear back, claws curl, the hand shakes as it charges
       const from = _v.set(SL.hx, hover, -(p.d + 4)); _a.set(X, TOPY, -SL.dSlam);
@@ -1686,11 +1728,18 @@ function animateSlap(dt, t) {
       H.position.set(X, 0.75 - 0.12 * sink, -SL.dSlam);
       sq = Math.max(0, 1 - SL.t / 0.22); curl = 0.15; rx = 0.15 * sq;
     } else {
-      // pull free: lift straight up first, then back to the demon
-      const up = Math.min(1, k / 0.3);
+      // pull free: lift straight up first, then carry it back in an arc to the claw it holds up when idle
+      const up = Math.min(1, k / RETURN_K[0]);
       _a.set(X, 0.75 + 4 * easeK(up), -SL.dSlam);
-      if (k < 0.3) H.position.copy(_a); else H.position.lerpVectors(_a, _sh, easeK((k - 0.3) / 0.7 * 1.8));
       curl = -0.5 * up; rx = -0.3 * up;
+      if (k < RETURN_K[0]) H.position.copy(_a);
+      else {
+        const u = Math.min(1, (k - RETURN_K[0]) / (RETURN_K[1] - RETURN_K[0])), e = easeK(u);
+        idleClaw(_cl, _qIdle, _elIdle);
+        _ctl.set(_cl.x, Math.max(_cl.y, _a.y) + 8, _a.z + (_cl.z - _a.z) * 0.6);
+        bezier(H.position, _a, _ctl, _cl, e);
+        turn = 1 - e; blend = 1 - e; curl = -0.5 - 0.1 * e;
+      }
     }
   } else {
     if (ph === 'aim') { _a.set(s * 7, 3.6 + Math.sin(t * 6) * 0.2, -(p.d + 2)); if (k < 0.35) H.position.lerpVectors(_sh, _a, easeK(k / 0.35)); else H.position.copy(_a); rz = s * 0.5; }
@@ -1698,32 +1747,39 @@ function animateSlap(dt, t) {
     else if (ph === 'swing') { H.position.set(s * 7 * (1 - 2 * k), SWAT_Y, -p.d); ry = -s * 0.15; }
     else { _a.set(-s * 7, SWAT_Y, -p.d); H.position.lerpVectors(_a, _sh, easeK(Math.min(1, k * 1.8))); rz = -s * 0.4; }
   }
-  if (ph === 'retreat' && k > 0.55) { slapHand.g.visible = false; reachArm.visible = false; demon.arms[armIdx()].visible = true; return; }
-  H.rotation.set(rx, ry, rz);
+  if (ph === 'retreat' && k > RETURN_K[1]) { slapHand.g.visible = false; reachArm.visible = false; demon.arms[armIdx()].visible = true; return; }
+  _qH.setFromEuler(_eu.set(rx, ry, rz));
+  if (turn < 1) _qH.copy(_qIdle).slerp(_eu2q(), turn);      // claws-up -> palm-down
+  H.quaternion.copy(_qH);
   // local x is vertical while the palm faces down, so squash it on impact
   H.scale.set(sc * (1 - 0.28 * sq), sc * (1 + 0.14 * sq), sc * (1 + 0.08 * sq));
   // claws curl toward the palm (negative) and splay flat on impact (positive)
   slapHand.fingers.forEach((ch, i) => ch.forEach((jt, j) => { jt.rotation.y = curl * (0.5 + j * 0.3); jt.rotation.x = j === 0 && curl > 0 ? (i - 1.5) * 0.14 : 0; }));
   slapHand.thumb.forEach(jt => { jt.rotation.y = curl * 0.45; });
-  slapHand.wristFire.forEach(c => { const b = c.userData.base; c.scale.set(b, b * (0.7 + Math.random() * 0.7), b); });
+  slapHand.wristFire.forEach(c => { const b = c.userData.base * blend + 0.001; c.scale.set(b, b * (0.7 + Math.random() * 0.7), b); });
   const charge = ph === 'aim' ? k * 0.6 : ph === 'lock' ? 0.6 + 0.4 * k : ph === 'retreat' ? 0.2 : 1;
-  slapHand.aura.material.opacity = 0.3 + 0.5 * charge * (0.75 + 0.25 * Math.sin(t * 30));
+  slapHand.aura.material.opacity = (0.3 + 0.5 * charge * (0.75 + 0.25 * Math.sin(t * 30))) * blend;
   handLight.position.set(H.position.x, H.position.y + 1.6, H.position.z);
-  handLight.intensity = (1.3 + 2.2 * charge) * (ph === 'retreat' ? Math.max(0, 1 - k * 2) : 1) + FX.kick * 9;
+  handLight.intensity = (1.3 + 2.2 * charge) * (ph === 'retreat' ? Math.max(0, 1 - k * 2) : 1) * blend + FX.kick * 9;
+  armLook(blend);
   // pose the arm: shoulder -> elbow (bulging up and out) -> wrist
-  _wr.set(0, 0, -2.75).multiplyScalar(sc).applyEuler(H.rotation).add(H.position);
+  _wr.set(0, 0, -2.75).multiplyScalar(sc).applyQuaternion(H.quaternion).add(H.position);
   _v.subVectors(_wr, _sh);
   const L = _v.length();
-  _el.copy(_sh).addScaledVector(_v, 0.5); _el.y += L * 0.14; _el.x += SL.side * L * 0.06;
-  const rS = 5 * DMC.s, rUpTop = rS * 0.72, rW = 0.52 * sc, rFore = rW / 0.42;
+  // the elbow bulges up, and only slightly outward so it stays over the track
+  _el.copy(_sh).addScaledVector(_v, 0.5); _el.y += L * 0.14; _el.x += SL.side * L * 0.03;
+  _el.x = Math.max(-6, Math.min(6, _el.x));
+  if (blend < 1) _el.lerpVectors(_elIdle, _el, blend);       // during the raise and the return it starts/ends at the idle elbow
+  const ds = DMC.s, rS = ARM_R.shoulder * ds, rW = ARM_R.wrist * ds;
   placeSeg(reachArm.upper, _sh, _el, rS);
-  const fl = placeSeg(reachArm.fore, _el, _wr, rFore);
-  reachArm.elbow.position.copy(_el); reachArm.elbow.scale.setScalar(Math.max(rUpTop, rFore) * 0.98);
+  const fl = placeSeg(reachArm.fore, _el, _wr, rW);
+  reachArm.elbow.position.copy(_el); reachArm.elbow.scale.setScalar(ARM_R.elbow * ds);
   reachArm.spikes.forEach((sp, i) => {
-    const f = 0.18 + i * 0.15, ang = i * 1.9 + 0.6, rr = rFore * (1 - 0.58 * f);
+    const f = 0.18 + i * 0.15, ang = i * 1.9 + 0.6, rr = rW * armRadiusAt(ARM_FORE, f);
     sp.position.set(Math.cos(ang) * rr * 0.92, fl * f, Math.sin(ang) * rr * 0.92);
     sp.quaternion.setFromUnitVectors(_up, _d.set(Math.cos(ang), 0.45, Math.sin(ang)).normalize());
-    sp.scale.set(0.28 * sc * 0.5, 1.3 * sc * 0.5, 0.28 * sc * 0.5);
+    const g = blend * 0.5;                                   // the idle arm has no spikes, so they grow in with the raise
+    sp.scale.set(0.28 * sc * g + 0.001, 1.3 * sc * g + 0.001, 0.28 * sc * g + 0.001);
   });
 }
 const _el = new THREE.Vector3(), _d = new THREE.Vector3(), _d2 = new THREE.Vector3();
@@ -1739,6 +1795,41 @@ function placeSeg(seg, A, B, r) {
 function shoulderPos(out) {
   demon.root.updateMatrixWorld(true);
   return demon.arms[armIdx()].getWorldPosition(out);
+}
+const _cl = new THREE.Vector3(), _elIdle = new THREE.Vector3(), _ctl = new THREE.Vector3(), _qIdle = new THREE.Quaternion(), _qH = new THREE.Quaternion(), _qT = new THREE.Quaternion();
+const _eu = new THREE.Euler(), _m4 = new THREE.Matrix4(), _bx = new THREE.Vector3(), _by = new THREE.Vector3(), _bz = new THREE.Vector3();
+const _eu2q = () => _qT.setFromEuler(_eu);
+// where the hidden idle claw is right now (hand and elbow), and which way it faces:
+// fingers along the forearm with the claws up, palm toward you
+function idleClaw(handOut, quatOut, elbowOut) {
+  const a = demon.arms[armIdx()];
+  demon.root.updateMatrixWorld(true);
+  handOut.copy(a.userData.H).applyMatrix4(a.matrixWorld);
+  elbowOut.copy(a.userData.E).applyMatrix4(a.matrixWorld);
+  _bz.subVectors(handOut, elbowOut).normalize();                         // the hand's fingers (+z) point up the forearm
+  _bx.set(0, 0, 1).addScaledVector(_bz, -_bz.z).normalize().negate();    // its palm (-x) faces the runner (+z)
+  _by.crossVectors(_bz, _bx);
+  return quatOut.setFromRotationMatrix(_m4.makeBasis(_bx, _by, _bz));
+}
+// a curved path through a control point: starts at A heading toward C, ends at B
+function bezier(out, A, C, B, e) {
+  const i = 1 - e;
+  return out.set(i * i * A.x + 2 * i * e * C.x + e * e * B.x, i * i * A.y + 2 * i * e * C.y + e * e * B.y, i * i * A.z + 2 * i * e * C.z + e * e * B.z);
+}
+// heavy but fast: a moment of inertia, a powerful middle, a slight overshoot that settles with weight
+function heavyEase(u) {
+  const v = Math.pow(Math.max(0, Math.min(1, u)), 1.4) - 1, c = 1.25;
+  return 1 + (c + 1) * v * v * v + c * v * v;
+}
+// fades the reaching arm between the idle arm's look (0) and its own hotter look (1), so the swap doesn't flash
+const ARM_IDLE_COL = new THREE.Color(0x9a7a74), ARM_REACH_COL = new THREE.Color(0xc49890), HAND_IDLE_COL = new THREE.Color(0xb08880), HAND_REACH_COL = new THREE.Color(0xd8b0a8);
+function armLook(w) {
+  const idleGlow = demon.skins[0].emissiveIntensity;
+  [reachArm.upper.mat, reachArm.fore.mat, reachArm.elbow.material].forEach(m => {
+    m.color.copy(ARM_IDLE_COL).lerp(ARM_REACH_COL, w); m.emissiveIntensity = idleGlow + (1.0 - idleGlow) * w;
+  });
+  [reachArm.upper.glow, reachArm.fore.glow].forEach(g => { g.material.opacity = 0.12 * w; });
+  slapHand.skin.color.copy(HAND_IDLE_COL).lerp(HAND_REACH_COL, w); slapHand.skin.emissiveIntensity = idleGlow + (1.1 - idleGlow) * w;
 }
 
 // ---------- boss: SCYRUS, the five-headed reaper ----------
@@ -2275,18 +2366,22 @@ const BOSS = { active: false, kind: 'scyrus', phase: '', t: 0, rel: 220, y: 25, 
   shots: [], lane: 1, locked: false, hit: false, cued: false, side: 1, th0: 0, th1: 0, target: null, sx: 0, sy: 0, srel: 0, rot: 0,
   after: '', note: { lane: 1, d: 0, rel: 0 }, lit: false, wave: null, rings: [], drops: [], shunts: 0, rel0: 0, clearSaid: false };
 const ninjaK = () => perk('ninja') ? 1.5 : 1;
-const MOL_DUR = { intro: 3.0, idle: 0.75, waveWarn: 1.2, waveRun: 0.6, ringWarn: 0.7, rings: 99, meteor: 99, opening: 99, strike: 0.65, hurt: 0.9, recover: 0.6, die: 2.6 };
+// the guitar solo after he grabs a note: swing the guitar round to the front, play the note (the strike phase), swing it back.
+// draw + strike + stow stays under 1.3 s; he keeps running and can't be hurt for all of it
+const SOLO = { draw: 0.3, play: 0.65, stow: 0.3 };
+const SOLO_TOTAL = SOLO.draw + SOLO.play + SOLO.stow;
+const MOL_DUR = { intro: 3.0, idle: 0.75, waveWarn: 1.2, waveRun: 0.6, ringWarn: 0.7, rings: 99, meteor: 99, opening: 99, draw: SOLO.draw, strike: SOLO.play, hurt: 0.9, recover: 0.6, die: 2.6 };
 function bossDur(ph) {
   let d;
   if (BOSS.kind === 'molgrath') d = MOL_DUR[ph] * (ph === 'waveWarn' || ph === 'ringWarn' ? ninjaWarn() : 1);
   else if (BOSS.kind === 'switchman') {
     // the attacks themselves end when their hazards are behind you, so they get no fixed length
     d = { intro: 3.0, idle: 0.75, lock: 99, switch: 99, combo: 99, shuntBack: 0.9 + SW_WARN.shunt * swWarnK(), shuntRun: 1.6, shift: 2.0,
-      opening: 99, strike: 0.65, hurt: 0.9, recover: 0.6, die: 2.6 }[ph];
+      opening: 99, draw: SOLO.draw, strike: SOLO.play, hurt: 0.9, recover: 0.6, die: 2.6 }[ph];
   } else {
     const n = ninjaK();
     d = { intro: 3.0, idle: 0.75, fire: 99, reapIn: 0.7, reapWind: 0.7 * n, reapSwing: 0.7, reapOut: 0.7, chargeUp: 1.0, chargeDive: 2.9, chargeReturn: 1.6,
-      stunIn: 0.6, stun: 2.0 * n, ignite: 1.15, opening: 99, strike: 0.65, hurt: 0.9, recover: 0.6, die: 2.6 }[ph];
+      stunIn: 0.6, stun: 2.0 * n, ignite: 1.15, opening: 99, draw: SOLO.draw, strike: SOLO.play, hurt: 0.9, recover: 0.6, die: 2.6 }[ph];
   }
   if (!(d > 0)) { console.error('Boss phase has no duration:', BOSS.kind, ph); return 1; }   // never freeze a fight
   return d;
@@ -2613,7 +2708,7 @@ function animateMol(dt, t) {
     const d = BOSS.drops.find(x => x.started && !x.done) || BOSS.drops.find(x => !x.started);
     const pump = d && d.started ? Math.max(0, 1 - d.t / 0.25) : 0;
     armA = [0.3, -2.25 + pump * 0.45]; elb = [-0.2, -0.15]; lean = -0.08; headX = -0.2;   // fist raised, ready to hurl
-  } else if (ph === 'opening' || ph === 'strike') { lean = 0.28; armA = [0.35, 0.35]; elb = [0, 0]; headX = 0.5; sway = Math.sin(t * 2.4) * 0.08; }
+  } else if (ph === 'opening' || ph === 'draw' || ph === 'strike') { lean = 0.28; armA = [0.35, 0.35]; elb = [0, 0]; headX = 0.5; sway = Math.sin(t * 2.4) * 0.08; }
   else if (ph === 'hurt') { lean = -0.35 * (1 - k); armA = [-0.8 * (1 - k), -0.8 * (1 - k)]; headX = -0.4; }
   else if (ph === 'die') { lean = -0.4 * k; armA = [-2.4, -2.1]; elb = [-0.4, -0.4]; headX = -0.6; sway = Math.sin(t * 18) * 0.06; bob = 0; }
   M.body.rotation.x += (lean - M.body.rotation.x) * sm;
@@ -2643,7 +2738,7 @@ function animateMol(dt, t) {
   // cores: the one that glows blue-white is where the note will land
   M.cores.forEach(c => {
     if (!c.alive) { c.stump.children.forEach(ch => { const b = ch.userData.base; if (b) ch.scale.set(b, b * (0.7 + Math.random() * 0.6), b); }); c.halo.visible = false; return; }
-    const target = BOSS.target === c && (ph === 'opening' || ph === 'strike');
+    const target = BOSS.target === c && (ph === 'opening' || ph === 'draw' || ph === 'strike');
     c.halo.visible = true;
     c.halo.material.map = target ? strikeTex : glowTex;
     c.halo.material.opacity = target ? 0.7 + 0.3 * Math.sin(t * 14) : 0.5 + 0.25 * pulse;
@@ -2954,7 +3049,7 @@ function swLamps(ph, t, phN) {
   if (ph === 'switch') return [0, 1, 0];
   if (ph === 'combo') return [1, 1, 0];
   if (ph === 'shuntBack' || ph === 'shuntRun') { const i = Math.floor(t * 4) % 3; return [i === 0 ? 1 : 0.1, i === 1 ? 1 : 0.1, i === 2 ? 1 : 0.1]; }
-  if (ph === 'opening' || ph === 'strike' || ph === 'hurt' || ph === 'recover') return [0, 0, 0];
+  if (ph === 'opening' || ph === 'draw' || ph === 'strike' || ph === 'hurt' || ph === 'recover') return [0, 0, 0];
   if (ph === 'shift') return [flick, flick, flick];
   if (ph === 'die') return [0, 0, 1];
   return phN === 1 ? [0, 0, 1] : phN === 2 ? [0, 0, flick * 0.9] : [0, 0, 0];
@@ -2976,7 +3071,7 @@ function animateSw(dt, t) {
   else if (bar) { const u = bar.t / bar.warn; lean -= 0.15; hk = u < 0.45 ? [-1.4 * easeK(u / 0.45), -0.9] : [-1.4 + 3.0 * easeK((u - 0.45) / 0.3), -0.3]; lv = [-0.6, -0.7]; }
   else if (gap) { const u = gap.t / gap.warn; lv = [-0.3 - 1.6 * easeK(u / 0.5), -0.5 + 0.9 * easeK(u / 0.5)]; hk = [0.2, -0.5]; }
   else if (ph === 'shuntBack' || ph === 'shuntRun') { lean -= 0.35; lv = [1.3, -0.3]; hk = [1.3, -0.3]; }
-  else if (ph === 'opening' || ph === 'strike') { lean += 0.25; lv = [0.2, -0.1]; hk = [0.2, -0.1]; capUp = 1; }
+  else if (ph === 'opening' || ph === 'draw' || ph === 'strike') { lean += 0.25; lv = [0.2, -0.1]; hk = [0.2, -0.1]; capUp = 1; }
   else if (ph === 'hurt') { lean += 0.5 * (1 - k); lv = [0.8 * (1 - k), -0.8]; hk = [0.8 * (1 - k), -0.8]; }
   else if (ph === 'shift') { lean += Math.sin(t * 40) * 0.08; lv = [-0.8 + Math.sin(t * 30) * 0.3, -0.4]; hk = [-0.8, -0.4]; }
   else if (ph === 'die') { lean = 0.35 + k * 0.6; lv = [2.2, -0.2]; hk = [2.2, -0.2]; capUp = 1; }
@@ -2991,7 +3086,7 @@ function animateSw(dt, t) {
   M.coreCap.position.y += (capUp * 0.95 - M.coreCap.position.y) * Math.min(1, dt * 10);
   const open = M.coreCap.position.y > 0.3;
   M.orb.visible = open;
-  M.halo.material.opacity = open ? (ph === 'opening' || ph === 'strike' ? 0.75 + 0.25 * Math.sin(t * 14) : 0.5) : 0;
+  M.halo.material.opacity = open ? (ph === 'opening' || ph === 'draw' || ph === 'strike' ? 0.75 + 0.25 * Math.sin(t * 14) : 0.5) : 0;
   const hs = 2.4 + (open ? Math.sin(t * 14) * 0.4 : 0); M.halo.scale.set(hs, hs, 1);
   // the head rides upright on its mast, until it bounces off at the end
   if (!M.headFree) { M.root.updateMatrixWorld(true); M.anchor.getWorldPosition(M.head.position); M.head.rotation.set(0, 0, 0); }
@@ -3208,7 +3303,8 @@ function updateBoss(dt, live) {
     if (live && st.mode === 'run' && a.d < p.d + 1.3 && a.d > prevD - 1.3 && Math.abs(LANES[a.lane] - p.x) < 1.1 && p.y < 2.6) {
       notePick.visible = false; sfx.strum();
       BOSS.sx = p.x; BOSS.sy = p.y + 1.3;
-      bossPhase('strike');
+      p.soloT = 0; p.rollT = 0; p.rollQueued = false;   // he reaches for the guitar without breaking stride
+      bossPhase('draw');
     } else if (a.d < p.d - 3) {
       notePick.visible = false;
       toast('Missed the note!', true); bossPhase('recover');
@@ -3218,8 +3314,14 @@ function updateBoss(dt, live) {
     if (t >= D) bossPhase('stun');
   } else if (ph === 'stun') {
     if (t >= D) { toast('Too slow! Jump when a head glows', true); bossPhase('recover'); }
+  } else if (ph === 'draw') {
+    if (t >= D) bossPhase('strike');     // guitar is in his hands: fire the note
   } else if (ph === 'strike') {
-    if (t >= D) {
+    if (t >= D && !(BOSS.target && BOSS.target.alive)) {
+      // the note found nothing to hit: back to the fight as if he never had it
+      noteShot.visible = false; noteTrail.forEach(s => { s.visible = false; });
+      toast('The note missed!', true); bossPhase('recover');
+    } else if (t >= D) {
       const h = BOSS.target, mg = BOSS.kind === 'molgrath', sw = BOSS.kind === 'switchman';
       bossRoot().updateMatrixWorld(true); h.g.getWorldPosition(_hp);
       burst(_hp.x, _hp.y, _hp.z, 1.6, 8);
@@ -3295,7 +3397,7 @@ function animateBoss(dt, t) {
     h.jaw.rotation.x += (open - h.jaw.rotation.x) * Math.min(1, dt * 12);
     const ms = h.charge > 0 ? 0.3 + h.charge * 1.4 : 0.01;
     h.mouth.scale.set(ms, ms, 1);
-    const target = BOSS.target === h && (ph === 'opening' || ph === 'strike');
+    const target = BOSS.target === h && (ph === 'opening' || ph === 'draw' || ph === 'strike');
     h.halo.material.opacity = target ? 0.65 + 0.35 * Math.sin(t * 14) : 0;
     h.halo.material.map = target ? strikeTex : glowTex;
   });
@@ -3348,7 +3450,7 @@ function animateBoss(dt, t) {
 }
 
 // ---------- game state ----------
-const p = { lane: 1, fromLane: 1, x: 0, y: 0, vy: 0, d: 0, grounded: true, rollT: 0, rollQueued: false, phase: 0, stumbleT: 0, slowT: 0, invulnT: 0, dieT: 0, roofT: 99, floorY: 0 };
+const p = { soloT: -1, lane: 1, fromLane: 1, x: 0, y: 0, vy: 0, d: 0, grounded: true, rollT: 0, rollQueued: false, phase: 0, stumbleT: 0, slowT: 0, invulnT: 0, dieT: 0, roofT: 99, floorY: 0 };
 const st = {
   mode: 'menu', score: 0, coins: 0, speed: 16, dist: 0,
   power: { magnet: 0, jet: 0, sneakers: 0, double: 0 },
@@ -4032,7 +4134,7 @@ function musFrame(dt) {
   if (st.mode === 'run') {
     if (dragons.some(d => d.active && !d.passed && !d.hit && d.d - p.d < 90)) danger = Math.max(danger, dragons.some(d => d.locked && !d.passed && !d.hit) ? 1 : 0.55);
     if (SL.active && SL.phase !== 'retreat') danger = Math.max(danger, (SL.phase === 'lock' || SL.phase === 'smash') ? 1 : 0.6);
-    if (BOSS.active) danger = Math.max(danger, BOSS.phase === 'opening' || BOSS.phase === 'idle' || BOSS.phase === 'hurt' || BOSS.phase === 'shift' ? 0.35 : 0.9);
+    if (BOSS.active) danger = Math.max(danger, BOSS.phase === 'opening' || BOSS.phase === 'draw' || BOSS.phase === 'idle' || BOSS.phase === 'hurt' || BOSS.phase === 'shift' ? 0.35 : 0.9);
   }
   mus.intensity += (danger - mus.intensity) * Math.min(1, dt * (danger > mus.intensity ? 6 : 1.5));
   const target = st.mode === 'run' ? 18000 : st.mode === 'dying' || st.mode === 'over' ? 380 : 1600;
@@ -4108,11 +4210,77 @@ function refreshMenu() {
 refreshMenu();
 function show(id, on) { $(id).hidden = !on; }
 
+// ---------- save points ----------
+// Every SAVE_EVERY metres you run through a glowing gate. Passing it snapshots the run (distance, score, coins,
+// which boss is next). If you crash later, the game-over screen offers to continue from that gate, once per gate.
+const SAVE_EVERY = 1000;
+const SAVE = { nextD: SAVE_EVERY, point: null, flash: 0 };
+const saveGate = (() => {
+  const g = new THREE.Group();
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0x3dffb0, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
+  const postMat = new THREE.MeshLambertMaterial({ color: 0x24443a });
+  for (const sx of [-1, 1]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.6, 10, 0.6), postMat); post.position.set(sx * 4.6, 5, 0); g.add(post);
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.2, 9.4, 0.7), glowMat); strip.position.set(sx * 4.25, 5, 0); g.add(strip);
+  }
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(9.8, 0.7, 0.6), postMat); beam.position.set(0, 10, 0); g.add(beam);
+  const c = document.createElement('canvas'); c.width = 512; c.height = 96;
+  const x = c.getContext('2d');
+  x.font = 'bold 64px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.shadowColor = '#3dffb0'; x.shadowBlur = 18; x.fillStyle = '#d8fff0'; x.fillText('SAVE POINT', 256, 50);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(7, 1.3), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
+  sign.position.set(0, 8.9, 0.35); g.add(sign);
+  g.visible = false; scene.add(g);
+  return { g, glowMat };
+})();
+// snapshot the run at distance d
+function savePoint(d) {
+  const boss = BOSS.active;   // mid-fight: the snapshot rewinds to just before this boss
+  SAVE.point = {
+    d, score: st.score, coins: st.coins, lifeUsed: st.lifeUsed, used: false,
+    bossNext: boss ? BOSS.kind : st.bossNext, bossCount: boss ? st.bossCount - 1 : st.bossCount,
+    nextBossD: boss ? d + 150 : Math.max(st.nextBossD, d + 150),
+    nextDragonD: Math.max(st.nextDragonD, d + 150), nextSlapD: Math.max(st.nextSlapD, d + 200)
+  };
+  SAVE.flash = 1; sfx.power(); toast('Save point! ' + Math.floor(d).toLocaleString() + ' m');
+}
+function updateSave(dt) {
+  if (p.d >= SAVE.nextD) { savePoint(SAVE.nextD); SAVE.nextD += SAVE_EVERY; }
+  // the gate stands at the next save point, or at the one you just passed until it is behind the camera
+  const just = SAVE.point && p.d - SAVE.point.d < 25 ? SAVE.point.d : SAVE.nextD;
+  saveGate.g.position.z = -just;
+  saveGate.g.visible = just - p.d < 300;
+  if (SAVE.flash > 0) SAVE.flash = Math.max(0, SAVE.flash - dt * 1.5);
+  saveGate.glowMat.opacity = 0.6 + 0.25 * Math.sin(performance.now() / 200) + SAVE.flash * 0.4;
+}
+function clearSave() { SAVE.point = null; SAVE.nextD = SAVE_EVERY; saveGate.g.visible = false; }
+function continueRun() {
+  const S = SAVE.point;
+  if (st.mode !== 'over' || !S || S.used) return;
+  S.used = true;
+  ensureAudio();
+  resetRun();
+  p.d = st.dist = S.d;
+  st.score = S.score; st.coins = st.coinBase = S.coins; st.distBase = S.d;   // only what you earn from here gets banked again
+  st.lifeUsed = S.lifeUsed;
+  st.bossNext = S.bossNext; st.bossCount = S.bossCount;
+  st.nextBossD = S.nextBossD; st.nextDragonD = S.nextDragonD; st.nextSlapD = S.nextSlapD;
+  st.nextRowD = S.d + 45; st.nextPowerD = S.d + 100; st.milestone = (Math.floor(S.d / 500) + 1) * 500;
+  nextB['-1'] = nextB['1'] = S.d - 20;
+  SAVE.nextD = S.d + SAVE_EVERY;
+  addCoinLine(1, S.d + 18, 8, 0);
+  p.invulnT = 2;
+  st.mode = 'run';
+  show('over', false); show('hud', true);
+  applyMusic();
+  toast('Back at the save point!');
+}
+
 // ---------- game flow ----------
 function resetRun() {
   clearWorld();
-  Object.assign(p, { lane: 1, fromLane: 1, x: 0, y: 0, vy: 0, d: 0, grounded: true, rollT: 0, rollQueued: false, stumbleT: 0, slowT: 0, invulnT: 0, dieT: 0, roofT: 99, floorY: 0 });
-  st.score = 0; st.coins = 0; st.dist = 0; st.speed = speedRamp ? 18 : STEADY_SPEED; st.shakeT = 0;
+  Object.assign(p, { soloT: -1, lane: 1, fromLane: 1, x: 0, y: 0, vy: 0, d: 0, grounded: true, rollT: 0, rollQueued: false, stumbleT: 0, slowT: 0, invulnT: 0, dieT: 0, roofT: 99, floorY: 0 });
+  st.score = 0; st.coins = 0; st.dist = 0; st.coinBase = 0; st.distBase = 0; st.speed = speedRamp ? 18 : STEADY_SPEED; st.shakeT = 0;
   for (const k in st.power) st.power[k] = 0;
   st.powerMax = {}; st.lifeUsed = false;
   st.nextRowD = 70; st.nextPowerD = 160; st.busyEnd = [0, 0, 0]; st.trainEnd = [0, 0, 0];
@@ -4131,7 +4299,7 @@ function resetRun() {
 }
 function startRun() {
   ensureAudio();
-  resetRun();
+  resetRun(); clearSave();
   st.mode = 'run';
   show('menu', false); show('over', false); show('paused', false); show('hud', true);
   PROG.runs++; saveProg();
@@ -4148,7 +4316,7 @@ function resume() {
   st.mode = 'run'; show('paused', false); last = performance.now(); applyMusic();
 }
 function toMenu() {
-  resetRun();
+  resetRun(); clearSave();
   st.mode = 'menu';
   show('paused', false); show('over', false); show('hud', false); show('menu', true); applyMusic();
   for (const k in powerRows) powerRows[k].row.hidden = true;
@@ -4156,7 +4324,7 @@ function toMenu() {
   $('startBtn').focus();
 }
 function crash(reason) {
-  if (st.mode !== 'run') return;
+  if (st.mode !== 'run' || p.soloT >= 0) return;   // nothing touches him mid-solo
   if (perk('bones') && !st.lifeUsed) {
     st.lifeUsed = true;
     p.invulnT = 2.5; p.stumbleT = 0; p.slowT = 0; p.vy = Math.max(p.vy, 0);
@@ -4176,9 +4344,10 @@ function gameOver() {
   const isBest = score > PROG.best;
   if (isBest) PROG.best = score;
   const metres = Math.max(0, st.dist);
-  PROG.km += metres;
+  PROG.km += Math.max(0, metres - st.distBase);
   if (metres > PROG.bestKm) PROG.bestKm = metres;
-  PROG.bank += st.coins; PROG.earned += st.coins;
+  const gained = st.coins - st.coinBase;
+  PROG.bank += gained; PROG.earned += gained;
   saveProg();                                   // the run is banked the moment it ends
   $('reason').textContent = st.reason;
   $('oScore').textContent = score.toLocaleString();
@@ -4190,9 +4359,13 @@ function gameOver() {
   ob.append('Next boss: ', obn);
   show('over', true); show('hud', false); $('warn').hidden = true;
   for (const k in powerRows) powerRows[k].row.hidden = true;
-  $('againBtn').focus();
+  const sp = SAVE.point, cb = $('contBtn');
+  cb.hidden = !sp || sp.used;
+  if (sp) cb.textContent = 'Continue from ' + Math.floor(sp.d).toLocaleString() + ' m';
+  (cb.hidden ? $('againBtn') : cb).focus();
 }
 function stumble(msg) {
+  if (p.soloT >= 0) return;
   if (p.stumbleT > 0) { crash('Tripped twice. ' + msg); return; }
   p.stumbleT = 4; p.slowT = 0.6; st.shakeT = 0.3;
   sfx.bump();
@@ -4202,7 +4375,7 @@ function stumble(msg) {
 
 // ---------- input ----------
 function act(a) {
-  if (st.mode !== 'run') return;
+  if (st.mode !== 'run' || p.soloT >= 0) return;   // he holds his lane while he plays
   if (a === 'left' || a === 'right') {
     const nl = Math.max(0, Math.min(2, p.lane + (a === 'left' ? -1 : 1)));
     if (nl !== p.lane) { p.fromLane = p.lane; p.lane = nl; sfx.lane(); }
@@ -4218,13 +4391,67 @@ function act(a) {
     else { p.vy = -26; p.rollQueued = true; }
   }
 }
+// ---------- debug mode ----------
+// Off by default. Turn it on by adding ?debug to the end of the game's address, or press Ctrl+Shift+D in the game
+// (it remembers until you press it again). A small panel lists the keys.
+// To add a trigger, add one line to DEBUG_TRIGGERS: the key, a label for the panel, and a function that does it.
+const DEBUG = { on: false, slow: 1, panel: null };
+const DEBUG_TRIGGERS = [
+  { key: 'Digit1', label: 'Demon smash attack (from the start)', run() { debugClear(); startSlap(); } },
+  { key: 'Digit2', label: 'Demon smash: jump straight to the arm raise', run() {
+    debugClear(); startSlap(); enterPhase('look', true); enterPhase('aim', true);
+  } },
+  { key: 'Digit3', label: 'Make a save point right here', run() { savePoint(p.d); } },
+  { key: 'Digit4', label: 'Crash now (to test continuing)', run() {
+    p.invulnT = 0; st.power.jet = 0; st.lifeUsed = true; crash('Debug crash.');
+  } },
+  { key: 'Digit0', label: 'Slow motion on/off (quarter speed)', any: true, run() {
+    DEBUG.slow = DEBUG.slow === 1 ? 0.25 : 1; toast(DEBUG.slow === 1 ? 'Normal speed' : 'Slow motion');
+  } }
+];
+// clears whatever is happening so a trigger starts clean
+function debugClear() {
+  if (BOSS.active) { endBoss(false); st.nextBossD = p.d + BOSS_EVERY; }
+  if (SL.active) hideSlap();
+}
+function debugSet(on) {
+  DEBUG.on = on;
+  try { if (on) localStorage.setItem('raildash.debug', '1'); else localStorage.removeItem('raildash.debug'); } catch (e) { /* storage blocked: still works for this session */ }
+  if (!DEBUG.panel) {
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:50;padding:8px 10px;border-radius:8px;background:rgba(10,4,4,.82);color:#ffd9a0;font:12px/1.5 monospace;pointer-events:none;white-space:pre';
+    document.body.appendChild(el); DEBUG.panel = el;
+  }
+  DEBUG.panel.textContent = 'DEBUG (Ctrl+Shift+D to hide)\n' + DEBUG_TRIGGERS.map(d => d.key.replace('Digit', '') + '  ' + d.label).join('\n');
+  DEBUG.panel.hidden = !on;
+  if (!on) DEBUG.slow = 1;
+}
+function debugKey(e) {
+  if (e.ctrlKey && e.shiftKey && e.code === 'KeyD') { e.preventDefault(); debugSet(!DEBUG.on); return true; }
+  if (!DEBUG.on || e.repeat) return false;
+  const code = e.code.replace('Numpad', 'Digit');   // number-pad keys work the same as the top-row number keys
+  const d = DEBUG_TRIGGERS.find(x => x.key === code);
+  if (!d) return false;
+  e.preventDefault();
+  if (!d.any && st.mode !== 'run') { toast('Start a run first'); return true; }
+  d.run();
+  return true;
+}
+{
+  let on = false;
+  try { on = new URLSearchParams(location.search).has('debug') || localStorage.getItem('raildash.debug') === '1'; } catch (e) { /* no storage: off */ }
+  if (on) debugSet(true);
+}
 const keyMap = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'jump', KeyW: 'jump', Space: 'jump', ArrowDown: 'roll', KeyS: 'roll' };
 window.addEventListener('keydown', e => {
   const tag = (e.target && e.target.tagName) || '';
   if (tag === 'INPUT' || tag === 'TEXTAREA') { if (e.code === 'Escape') e.target.blur(); return; }   // typing a save code, not playing
+  if (debugKey(e)) return;
   if (!$('prog').hidden) { if (e.code === 'Escape') { e.preventDefault(); closeProg(); } return; }
   if (shopOpen) { if (e.code === 'Escape') { e.preventDefault(); closeShop(); } return; }
   if (e.code === 'KeyP' || e.code === 'Escape') { if (st.mode === 'run') pause(); else if (st.mode === 'paused') resume(); e.preventDefault(); return; }
+  if (st.mode === 'over' && e.code === 'KeyC' && !$('contBtn').hidden) { e.preventDefault(); continueRun(); return; }
+  if (st.mode === 'over' && (e.code === 'Space' || e.code === 'Enter') && document.activeElement === $('contBtn')) { e.preventDefault(); continueRun(); return; }
   if ((st.mode === 'menu' || st.mode === 'over') && (e.code === 'Space' || e.code === 'Enter')) { e.preventDefault(); startRun(); return; }
   const a = keyMap[e.code];
   if (a && st.mode === 'run') { e.preventDefault(); if (!e.repeat) act(a); }
@@ -4243,6 +4470,7 @@ window.addEventListener('pointerup', () => { sw = null; });
 window.addEventListener('pointercancel', () => { sw = null; });
 $('startBtn').addEventListener('click', startRun);
 $('againBtn').addEventListener('click', startRun);
+$('contBtn').addEventListener('click', continueRun);
 $('pauseBtn').addEventListener('click', pause);
 $('resumeBtn').addEventListener('click', resume);
 $('quitBtn').addEventListener('click', toMenu);
@@ -4569,13 +4797,15 @@ function update(dt) {
     : STEADY_SPEED;
   if (p.slowT > 0) p.slowT -= dt;
   st.speed = base * (p.slowT > 0 ? 0.72 : 1);
-  const s = st.speed;
+  if (p.soloT >= 0) { p.soloT += dt; if (p.soloT >= SOLO_TOTAL) p.soloT = -1; }
+  const s = st.speed;                          // he keeps running through the solo
   const prevD = p.d, prevX = p.x;
   p.d += s * dt;
   st.dist = p.d;
 
   const mult = Math.min(10, 1 + Math.floor(st.dist / 500)) * scoreX();
   st.score += s * dt * mult * 0.6;
+  updateSave(dt);
   if (st.dist >= st.milestone) { toast(`${st.milestone.toLocaleString()} m! Speeding up`); st.milestone += 500; }
 
   // timers
@@ -4755,35 +4985,55 @@ function animate(dt, t) {
   pm.root.position.set(p.x, p.y, -p.d);
   const air = !p.grounded && st.power.jet <= 0;
   const rolling = p.rollT > 0;
-  const playing = BOSS.active && BOSS.phase === 'strike' && st.mode === 'run';
+  const solo = p.soloT >= 0 && st.mode === 'run';
   if (st.mode === 'run' || st.mode === 'menu') p.phase += dt * (st.mode === 'run' ? st.speed * 0.75 : 4);
   const sw = Math.sin(p.phase);
+  pm.armL.rotation.z = 0; pm.armR.rotation.z = 0;
+  let gA = 0;                                   // 0 = guitar on his back, 1 = in playing position
   if (st.mode === 'dying') {
     pm.legL.rotation.x = 0.4; pm.legR.rotation.x = -0.3; pm.armL.rotation.x = -2.6; pm.armR.rotation.x = -2.4;
-  } else if (st.power.jet > 0) {
+  } else if (st.power.jet > 0 && !solo) {
     pm.legL.rotation.x = 0.25 + sw * 0.1; pm.legR.rotation.x = 0.15 - sw * 0.1; pm.armL.rotation.x = -0.4; pm.armR.rotation.x = -0.4;
-  } else if (air) {
+  } else if (air && !solo) {
     pm.legL.rotation.x = -0.9; pm.legR.rotation.x = 0.5; pm.armL.rotation.x = -2.2; pm.armR.rotation.x = -1.6;
   } else if (st.mode === 'menu') {
     pm.legL.rotation.x = sw * 0.25; pm.legR.rotation.x = -sw * 0.25; pm.armL.rotation.x = -sw * 0.2; pm.armR.rotation.x = sw * 0.2;
-  } else if (playing) {
-    // mid-riff: one hand hammers the strings, the other runs up the neck
-    pm.armR.rotation.x = -1.15 + Math.sin(t * 30) * 0.55;
-    pm.armL.rotation.x = -1.25 + Math.sin(t * 15 + 1) * 0.2;
-    pm.armL.rotation.z = 0.5; pm.armR.rotation.z = -0.25;
-    pm.legL.rotation.x = sw * 0.5; pm.legR.rotation.x = -sw * 0.5;
+  } else if (solo) {
+    // left-handed, like the man himself: the neck runs out past his RIGHT side, the right hand frets, the left strums.
+    // (a positive arm rotation.x swings the hand forward; negative swings it behind him)
+    const T = p.soloT, E = easeK, lerp = (a, b, u) => a + (b - a) * u;
+    const strumL = 0.8 + Math.sin(t * 30) * 0.32, fretR = 1.15 + Math.sin(t * 13 + 1) * 0.07;
+    let rX, rZ, lX, lZ;
+    if (T < SOLO.draw) {
+      // reach back over the right shoulder, grab the neck, swing it round his right side to the front
+      const u = T / SOLO.draw, grab = E(u / 0.4), swing = E((u - 0.4) / 0.6);
+      rX = u < 0.4 ? lerp(0, -2.6, grab) : lerp(-2.6, fretR, swing);
+      rZ = 0.1 * swing + Math.sin(Math.PI * swing) * 0.8;
+      lX = lerp(0, strumL, swing); lZ = 0.5 * swing;
+      gA = swing;
+    } else if (T < SOLO.draw + SOLO.play) {
+      rX = fretR; rZ = 0.1; lX = strumL; lZ = 0.5; gA = 1;     // the note is in the air
+    } else {
+      // swing it back round onto his back, let go, arms back to running
+      const u = (T - SOLO.draw - SOLO.play) / SOLO.stow, swing = E(u / 0.65), drop = E((u - 0.65) / 0.35);
+      rX = u < 0.65 ? lerp(fretR, -2.4, swing) : lerp(-2.4, sw * 0.85, drop);
+      rZ = u < 0.65 ? 0.1 * (1 - swing) + Math.sin(Math.PI * swing) * 0.8 : 0;
+      lX = lerp(strumL, -sw * 0.85, swing); lZ = 0.5 * (1 - swing);
+      gA = 1 - swing;
+    }
+    pm.armR.rotation.x = rX; pm.armR.rotation.z = rZ;
+    pm.armL.rotation.x = lX; pm.armL.rotation.z = lZ;
+    pm.legL.rotation.x = sw * 0.95; pm.legR.rotation.x = -sw * 0.95;   // legs keep running
   } else {
     pm.legL.rotation.x = sw * 0.95; pm.legR.rotation.x = -sw * 0.95; pm.armL.rotation.x = -sw * 0.85; pm.armR.rotation.x = sw * 0.85;
     pm.armL.rotation.z = 0; pm.armR.rotation.z = 0;
   }
   // the guitar swings off his back and round to the front to be played
+  // it orbits round his right side so it never passes through him; turning with the orbit keeps the strings facing out
   if (pm.guitar) {
-    const gq = playing ? 1 : 0;
-    pm.guitar.userData.k = (pm.guitar.userData.k || 0) + (gq - (pm.guitar.userData.k || 0)) * Math.min(1, dt * 11);
-    const gk = pm.guitar.userData.k;
-    pm.guitar.position.set(0.02 - gk * 0.06, 0.98 - gk * 0.02, 0.295 - gk * 0.6);
-    pm.guitar.rotation.z = -0.42 + gk * 0.68;     // slung across the hips, neck angled up, not across his face
-    pm.guitar.rotation.y = gk * 0.22;
+    const ang = Math.PI * gA;
+    pm.guitar.position.set(0.02 + gA * 0.02 + Math.sin(ang) * 0.36, 0.98 - gA * 0.03, 0.295 * Math.cos(ang) - gA * 0.01);
+    pm.guitar.rotation.set(0, ang, -0.42 + gA * 1.6);   // on the front: body at his hips, headstock out past his right side
   }
   const targetSY = rolling ? 0.5 : 1;
   pm.model.scale.y += (targetSY - pm.model.scale.y) * Math.min(1, dt * 18);
@@ -4890,7 +5140,7 @@ function animate(dt, t) {
 // ---------- loop ----------
 let last = performance.now();
 function frame(now) {
-  const dt = Math.min(0.05, (now - last) / 1000);
+  const dt = Math.min(0.05, (now - last) / 1000) * DEBUG.slow;
   last = now;
   if (st.mode !== 'paused') {
     update(dt);
