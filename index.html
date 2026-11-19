@@ -2051,9 +2051,12 @@ reapArc.rotation.x = -Math.PI / 2; reapArc.visible = false; scene.add(reapArc);
 // walking backwards at your speed. Every attack starts at his feet and comes toward you, so it is
 // always in view: nothing is ever placed behind him.
 const MOL_IDLE = { rel: 34, y: 0 };
-const MOL_WAVE_V = 68;            // lava wave front: his feet to you in 0.5 s
-const MOL_RING_V = 34;            // fire rings: his feet to you in 1.0 s
-const MOL_RING_GAP = 1.1;         // seconds between fire rings
+const MOL_WAVE_V = 90;            // lava wave front: his feet to you in 0.38 s
+const MOL_RING_V = 46;            // fire rings: his feet to you in 0.74 s
+const MOL_RING_GAP = 0.8;         // seconds between fire rings: a jump lasts 0.64 s, so you land and jump again
+const MOL_MOVES = [0, 3, 3, 2, 2, 1];   // attacks before the next note, by cores left (index 5 = full health)
+const MOL_METEOR = { first: 0.3, fall: 0.75, gap: 0.15 };   // red circle shows for 'fall' seconds before the rock lands
+const MOL_WAVE_HOT = 0.5;         // seconds into the wave warning when the strips turn hot
 const JUMP_CUE = 0.62;            // "JUMP!" this long before a ring reaches you: any reaction from 0.1 to 0.5 s clears it
 const MOL_NOTE = { rel: 32, time: 2.4 };   // the note rolls out from his feet and takes 2.4 s to reach you
 const MOL_MARK_REL = 0.6;         // meteor target circles sit right under you
@@ -2138,10 +2141,13 @@ const mol = (() => {
     fire.position.set(0, -2.75, 0.5); fire.scale.set(4, 4, 1); el.add(fire);
     return { sh, el, fist, fire };
   });
-  // three lava cores on the chest: his weak points
+  // five lava cores, his weak points: three on the chest and one on the front of each fist.
+  // A fist core hangs off the forearm group, so it moves with the fist when he swings.
   const coreGeo = new THREE.SphereGeometry(0.62, 20, 14), socketGeo = new THREE.TorusGeometry(0.78, 0.24, 8, 18);
-  const cores = [[-1.15, 6.35, 1.42], [1.15, 6.35, 1.42], [0, 4.75, 1.56]].map(([x, y, z], i) => {
-    const g = new THREE.Group(); g.position.set(x, y, z); body.add(g);
+  const coreSpots = [[body, -1.15, 6.35, 1.42, 1], [body, 1.15, 6.35, 1.42, 1], [body, 0, 4.75, 1.56, 1],
+    ...arms.map(a => [a.el, 0, -3.05, 1.6, 0.55])];
+  const cores = coreSpots.map(([parent, x, y, z, sc], i) => {
+    const g = new THREE.Group(); g.position.set(x, y, z); g.scale.setScalar(sc); parent.add(g);
     g.add(new THREE.Mesh(socketGeo, dark));
     const orb = new THREE.Mesh(coreGeo, new THREE.MeshBasicMaterial({ color: 0xffb347, fog: false })); orb.position.z = 0.1; g.add(orb);
     const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
@@ -2354,7 +2360,7 @@ function hideSwFx() {
 }
 const BOSS_INFO = {
   scyrus: { name: 'SCYRUS', title: 'The Five-Headed Reaper', points: 5, menu: 'Scyrus, the Five-Headed Reaper', how: 'Dodge his fireballs, jump his flaming scythe, then grab the notes and blast all five heads off with your guitar.' },
-  molgrath: { name: 'MOLGRATH', title: 'The Molten Titan', points: 3, menu: 'Molgrath, the Molten Titan', how: 'Switch lanes to dodge his lava waves and meteors, jump his fire rings, then grab the notes and crack all three cores with your guitar.' },
+  molgrath: { name: 'MOLGRATH', title: 'The Molten Titan', points: 5, menu: 'Molgrath, the Molten Titan', how: 'Switch lanes to dodge his lava waves and meteors, jump his fire rings, then grab the notes and crack all five cores with your guitar: three on his chest and one on each fist.' },
   switchman: { name: 'SWITCHMAN', title: 'The Railyard Wrecker', points: 6, menu: 'The Switchman, the Railyard Wrecker', he: 'It', how: 'Read the lamps on its head: red means a barricade is landing in your lane, yellow means your rail is about to vanish, and a chase of all three means it is coming up behind you. Dodge, then grab the notes and hammer its core six times.' }
 };
 const BOSS_ORDER = ['molgrath', 'scyrus', 'switchman'];
@@ -2370,7 +2376,7 @@ const ninjaK = () => perk('ninja') ? 1.5 : 1;
 // draw + strike + stow stays under 1.3 s; he keeps running and can't be hurt for all of it
 const SOLO = { draw: 0.3, play: 0.65, stow: 0.3 };
 const SOLO_TOTAL = SOLO.draw + SOLO.play + SOLO.stow;
-const MOL_DUR = { intro: 3.0, idle: 0.75, waveWarn: 1.2, waveRun: 0.6, ringWarn: 0.7, rings: 99, meteor: 99, opening: 99, draw: SOLO.draw, strike: SOLO.play, hurt: 0.9, recover: 0.6, die: 2.6 };
+const MOL_DUR = { intro: 3.0, idle: 0.4, waveWarn: 0.85, waveRun: 0.45, ringWarn: 0.5, rings: 99, meteor: 99, opening: 99, draw: SOLO.draw, strike: SOLO.play, hurt: 0.7, recover: 0.45, die: 2.6 };
 function bossDur(ph) {
   let d;
   if (BOSS.kind === 'molgrath') d = MOL_DUR[ph] * (ph === 'waveWarn' || ph === 'ringWarn' ? ninjaWarn() : 1);
@@ -2451,8 +2457,8 @@ function endBoss(won) {
 }
 function nextQueue() {
   if (BOSS.kind === 'molgrath') {
-    // 1 move with 3 cores left, 2 with 2 left, 3 with 1 left
-    BOSS.queue = shuffle(['wave', 'rings', 'meteor']).slice(0, BOSS.heads >= 3 ? 1 : BOSS.heads === 2 ? 2 : 3);
+    // attacks before each note: the fewer cores he has left, the more he throws at you
+    BOSS.queue = shuffle(['wave', 'rings', 'meteor']).slice(0, MOL_MOVES[Math.max(1, Math.min(5, BOSS.heads))]);
     return;
   }
   if (BOSS.kind === 'switchman') {
@@ -2565,8 +2571,8 @@ function molPhase(ph) {
     BOSS.rings = [0, 1, 2].map(i => ({ at: i * MOL_RING_GAP, rel: MOL_IDLE.rel, launched: false, cued: false, passed: false, gone: false, foot: i % 2 }));
     sfx.growl();
   } else if (ph === 'meteor') {
-    const T = 1.0 * ninjaWarn();
-    BOSS.drops = [0, 1, 2].map(i => ({ at: 0.45 + i * (T + 0.3), T, t: 0, started: false, done: false, lanes: null, fx: null, fy: 0, frel: 0 }));
+    const T = MOL_METEOR.fall * ninjaWarn();
+    BOSS.drops = [0, 1, 2].map(i => ({ at: MOL_METEOR.first + i * (T + MOL_METEOR.gap), T, t: 0, started: false, done: false, lanes: null, fx: null, fy: 0, frel: 0 }));
     sfx.roar();
   } else if (ph === 'opening') {
     const alive = aliveHeads();
@@ -2681,7 +2687,7 @@ function molWarnText() {
 }
 function molWarnHot() {
   const ph = BOSS.phase, w = BOSS.wave;
-  if ((ph === 'waveWarn' && BOSS.t >= 0.7 * ninjaWarn()) || ph === 'waveRun') return !!w && w.lanes.includes(p.lane);
+  if ((ph === 'waveWarn' && BOSS.t >= MOL_WAVE_HOT * ninjaWarn()) || ph === 'waveRun') return !!w && w.lanes.includes(p.lane);
   if (ph === 'ringWarn' || ph === 'rings') return BOSS.rings.some(r => r.cued && !r.passed);
   if (ph === 'meteor') { const d = BOSS.drops.find(x => x.started && !x.done); return !!d && d.lanes.includes(p.lane); }
   return false;
@@ -4405,10 +4411,23 @@ const DEBUG_TRIGGERS = [
   { key: 'Digit4', label: 'Crash now (to test continuing)', run() {
     p.invulnT = 0; st.power.jet = 0; st.lifeUsed = true; crash('Debug crash.');
   } },
+  { key: 'Digit5', label: 'Molgrath boss fight', run() { debugBoss('molgrath'); } },
+  { key: 'Digit6', label: 'Molgrath with 1 core left', run() {
+    debugBoss('molgrath');
+    mol.cores.slice(0, -1).forEach(c => { c.alive = false; c.orb.visible = false; c.halo.visible = false; c.stump.visible = true; });
+    BOSS.heads = 1; updateBossBar(); nextQueue();
+  } },
   { key: 'Digit0', label: 'Slow motion on/off (quarter speed)', any: true, run() {
     DEBUG.slow = DEBUG.slow === 1 ? 0.25 : 1; toast(DEBUG.slow === 1 ? 'Normal speed' : 'Slow motion');
   } }
 ];
+// starts a boss right now without counting it in your saved stats
+function debugBoss(kind) {
+  debugClear();
+  const keep = { fought: PROG.fought, next: PROG.next, f: PROG[PROG_KEYS[kind][0]] };
+  st.bossNext = kind; startBoss();
+  PROG.fought = keep.fought; PROG.next = keep.next; PROG[PROG_KEYS[kind][0]] = keep.f; saveProg();
+}
 // clears whatever is happening so a trigger starts clean
 function debugClear() {
   if (BOSS.active) { endBoss(false); st.nextBossD = p.d + BOSS_EVERY; }
