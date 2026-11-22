@@ -2232,7 +2232,8 @@ const SW_WARN = { lock: 1.2, switch: 1.4, combo: 1.5 };   // phase 1 warnings; p
 // the Shunt Charge: it drops back behind you (back), a yellow stripe shows the lane it is lining up on (aim),
 // the stripe turns red when it locks onto that lane (lock), then it rams through. It charges 'charges' times in a row.
 // aim must stay between 0.4 and 0.5 s, and it does not change with the fight's phase or the ninja perk.
-const SW_SHUNT = { back: 0.9, aim: 0.45, lock: 0.6, charges: 3 };
+// run is how long the dash takes, in seconds: SMALLER is a FASTER dash (1.6 was the original)
+const SW_SHUNT = { back: 0.9, aim: 0.45, lock: 0.6, run: 1.6, charges: 3 };
 // the drop back only takes time when it starts ahead of you; on the 2nd and 3rd charge it is already behind you
 function swShuntBack() { return BOSS.rel0 > 0 ? SW_SHUNT.back : 0; }
 const SW_GAP_T = 0.24;                          // a gap is this many seconds of running long: always shorter than a jump (0.64 s)
@@ -2389,7 +2390,7 @@ function bossDur(ph) {
   if (BOSS.kind === 'molgrath') d = MOL_DUR[ph] * (ph === 'waveWarn' || ph === 'ringWarn' ? ninjaWarn() : 1);
   else if (BOSS.kind === 'switchman') {
     // the attacks themselves end when their hazards are behind you, so they get no fixed length
-    d = { intro: 3.0, idle: 0.75, lock: 99, switch: 99, combo: 99, shuntBack: swShuntBack() + SW_SHUNT.aim + SW_SHUNT.lock, shuntRun: 1.6, shift: 2.0,
+    d = { intro: 3.0, idle: 0.75, lock: 99, switch: 99, combo: 99, shuntBack: swShuntBack() + SW_SHUNT.aim + SW_SHUNT.lock, shuntRun: SW_SHUNT.run, shift: 2.0,
       opening: 99, draw: SOLO.draw, strike: SOLO.play, hurt: 0.9, recover: 0.6, die: 2.6 }[ph];
   } else {
     const n = ninjaK();
