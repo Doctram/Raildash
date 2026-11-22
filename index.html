@@ -294,7 +294,6 @@ button:focus-visible{outline:4px solid var(--violet);outline-offset:3px}
       <div class="stat"><b id="oBest">0</b><small>Best</small></div>
     </div>
     <div class="row">
-      <button class="btn" id="contBtn" hidden>Continue</button>
       <button class="btn" id="againBtn">Run again</button>
       <button class="btn alt" id="overShopBtn">Shop</button>
     </div>
@@ -465,7 +464,7 @@ const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // ---------- constants ----------
 const LANES = [-2.5, 0, 2.5];
-const STEADY_SPEED = 26;        // the pace you used to reach around 800 m
+const STEADY_SPEED = 30;        // the pace you used to reach around 800 m
 const G = 34;
 const TOP = 3.15;          // train roof height
 const RAMP_L = 6.5;
@@ -1623,6 +1622,7 @@ function phaseDur(ph) { return ATK_T[ph] * (ph === 'lock' && perk('ninja') ? 1.6
 function updateSlap(dt, live) {
   if (!SL.active) return;
   SL.t += dt;
+  if (DEBUG.holdAim && SL.phase === 'aim') SL.t = Math.min(SL.t, phaseDur('aim') - 0.01);   // debug: keep hovering
   const dur = phaseDur(SL.phase);
   if (SL.t >= dur) {
     if (SL.phase === 'retreat') { hideSlap(); st.nextSlapD = p.d + 260 + Math.random() * 220; return; }
@@ -2219,7 +2219,7 @@ function hideMolFx() {
   F.pool.visible = false; F.poolGlow.visible = false; F.light.intensity = 0;
   mol.arms.forEach(a => { a.fire.material.opacity = 0; });
 }
-// ---------- boss: THE SWITCHMAN, the railyard wrecker ----------
+// ---------- boss: THE CONDUCTOR, the railyard wrecker ----------
 // A rusted railyard robot that drives along the lava channel on your left, facing the way you run.
 // It hardly ever hits you itself: it changes the rails under you. The traffic light on its head says
 // what is coming: red = a barricade in your lane, yellow = the rail under you is about to vanish,
@@ -2313,7 +2313,7 @@ const swm = (() => {
   scene.add(root);
   return { root, torso, wheels, core: { g: coreG, alive: true, i: 0 }, orb, halo, coreCap, leverArm, hookArm, stumpFx, anchor, head, lamps, smoke, wheelFx, plowFx, headFree: null };
 })();
-// the Switchman's hazards: thrown barricades, rail gaps, and the marks that warn of them
+// The Conductor's hazards: thrown barricades, rail gaps, and the marks that warn of them
 const swFx = (() => {
   const strip = c => { const m = new THREE.Mesh(dG.strip, new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.3, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.visible = false; scene.add(m); return m; };
   // a red X on the track where a barricade will land
@@ -2358,10 +2358,11 @@ function hideSwFx() {
   M.plowFx.material.opacity = 0; M.wheelFx.forEach(s => { s.material.opacity = 0; }); M.stumpFx.material.opacity = 0; M.smoke.forEach(s => { s.material.opacity = 0; });
   M.halo.material.opacity = 0; M.orb.visible = false;
 }
+// The Conductor's id is still 'switchman' (its old name), because saved games store that id
 const BOSS_INFO = {
   scyrus: { name: 'SCYRUS', title: 'The Five-Headed Reaper', points: 5, menu: 'Scyrus, the Five-Headed Reaper', how: 'Dodge his fireballs, jump his flaming scythe, then grab the notes and blast all five heads off with your guitar.' },
   molgrath: { name: 'MOLGRATH', title: 'The Molten Titan', points: 5, menu: 'Molgrath, the Molten Titan', how: 'Switch lanes to dodge his lava waves and meteors, jump his fire rings, then grab the notes and crack all five cores with your guitar: three on his chest and one on each fist.' },
-  switchman: { name: 'SWITCHMAN', title: 'The Railyard Wrecker', points: 6, menu: 'The Switchman, the Railyard Wrecker', he: 'It', how: 'Read the lamps on its head: red means a barricade is landing in your lane, yellow means your rail is about to vanish, and a chase of all three means it is coming up behind you. Dodge, then grab the notes and hammer its core six times.' }
+  switchman: { name: 'CONDUCTOR', title: 'The Railyard Wrecker', points: 6, menu: 'The Conductor, the Railyard Wrecker', he: 'It', how: 'Read the lamps on its head: red means a barricade is landing in your lane, yellow means your rail is about to vanish, and a chase of all three means it is coming up behind you. Dodge, then grab the notes and hammer its core six times.' }
 };
 const BOSS_ORDER = ['molgrath', 'scyrus', 'switchman'];
 const PROG_KEYS = { scyrus: ['scyF', 'scyB'], molgrath: ['molF', 'molB'], switchman: ['swF', 'swB'] };
@@ -2400,7 +2401,7 @@ function updateBossBar() {
   pips.forEach((el, i) => el.classList.toggle('dead', i >= BOSS.heads));
 }
 function startBoss() {
-  // Molgrath, Scyrus and the Switchman take turns; the next run opens with the boss after the one you met first this run
+  // Molgrath, Scyrus and The Conductor take turns; the next run opens with the boss after the one you met first this run
   const kind = BOSS_INFO[st.bossNext] ? st.bossNext : 'molgrath';
   if (!st.bossCount) { PROG.next = bossAfter(kind); }
   PROG.fought++; PROG[PROG_KEYS[kind][0]]++; saveProg();
@@ -2843,7 +2844,7 @@ function animateMol(dt, t) {
     mk.r.position.set(X, 0.07 + i * 0.003, -(p.d + MOL_MARK_REL)); mk.r.scale.setScalar(1 + 2.2 * (1 - u));
   });
 }
-// ---------- the Switchman's fight logic ----------
+// ---------- The Conductor's fight logic ----------
 // 6 hits in three phases of two. Phase 1: Lane Lock and Track Switch. Phase 2: the hook arm is gone,
 // warnings are shorter and it adds the Shunt Charge. Phase 3: lamps dark, black smoke, the Combo and a
 // double charge. Between attacks it parks ahead in a lane and opens its core: grab the note and hit it.
@@ -2920,7 +2921,7 @@ function swHazards(dt, live) {
       if (live && inLane) sfx.cue();
     }
     if (b.landed && !b.passed) {
-      if (run && !safe && inLane && p.d + 0.35 >= b.d && prevD - 0.35 <= b.d + 0.2 && p.y < 0.95) { crash('You ran straight into the Switchman’s barricade.'); return; }
+      if (run && !safe && inLane && p.d + 0.35 >= b.d && prevD - 0.35 <= b.d + 0.2 && p.y < 0.95) { crash('You ran straight into The Conductor’s barricade.'); return; }
       if (p.d > b.d + 1) { b.passed = true; if (run) toast('Dodged!'); }
     }
     if (b.d < p.d - 14) { b.on = false; b.g.visible = false; }
@@ -2935,7 +2936,7 @@ function swHazards(dt, live) {
     }
     if (g.open && !g.passed) {
       if (live && !g.cued && inLane && g.d0 > p.d && (g.d0 - p.d) / st.speed <= SW_GAP_CUE) { g.cued = true; sfx.cue(); }
-      if (run && !safe && inLane && p.d >= g.d0 && p.d <= g.d1 && p.y < 0.12) { crash('You fell into the gap the Switchman opened.'); return; }
+      if (run && !safe && inLane && p.d >= g.d0 && p.d <= g.d1 && p.y < 0.12) { crash('You fell into the gap The Conductor opened.'); return; }
       if (p.d > g.d1 + 0.5) { g.passed = true; if (run) toast('Dodged!'); }
     }
     if (g.d1 < p.d - 14) { g.on = false; g.g.visible = false; }
@@ -2986,7 +2987,7 @@ function updateSw(dt, live) {
     BOSS.rel = -30 + 110 * k;
     BOSS.x += (LANES[BOSS.lane] - BOSS.x) * Math.min(1, dt * 12);
     const inLane = Math.abs(p.x - LANES[BOSS.lane]) < 1.55;
-    if (run && !BOSS.hit && !safe && inLane && BOSS.rel > -3.4 && BOSS.rel < 3) { BOSS.hit = true; crash('The Switchman ran you down.'); }
+    if (run && !BOSS.hit && !safe && inLane && BOSS.rel > -3.4 && BOSS.rel < 3) { BOSS.hit = true; crash('The Conductor ran you down.'); }
     if (prev < 3.5 && BOSS.rel >= 3.5 && !BOSS.hit && run) { toast('Dodged!'); sfx.whoosh(); }
     if (BOSS.rel > -5 && BOSS.rel < 5) st.shakeT = Math.max(st.shakeT, 0.08);
     if (t >= D) {
@@ -3018,7 +3019,7 @@ function swDieStep(dt, k) {
 function swWarnText() {
   const ph = BOSS.phase;
   const bar = swFx.bars.find(b => b.on && !b.passed), gap = swFx.gaps.find(g => g.on && !g.passed);
-  if (ph === 'intro') return 'Boss fight: The Switchman!';
+  if (ph === 'intro') return 'Boss fight: The Conductor!';
   if (ph === 'lock' && bar) {
     if (!bar.landed) return bar.lane === p.lane ? 'Barricade incoming! Jump it or switch lanes' : 'Barricade! Stay off the red X';
     return bar.lane === p.lane ? 'JUMP!' : 'Barricade! Stay out of its lane';
@@ -3165,7 +3166,7 @@ function animateNote(dt, t) {
   const ph = BOSS.phase, k = Math.min(1, BOSS.t / bossDur(ph));
   // the note pickup comes toward you; once grabbed, he plays it straight at the glowing weak point
   if (ph === 'opening') {
-    const rolls = BOSS.kind !== 'scyrus';      // Molgrath's and the Switchman's notes roll along the ground
+    const rolls = BOSS.kind !== 'scyrus';      // Molgrath's and The Conductor's notes roll along the ground
     notePick.position.set(LANES[BOSS.note.lane], rolls ? 1.05 + Math.abs(Math.sin(t * 7)) * 0.35 : 1.3 + Math.sin(t * 3) * 0.15, -BOSS.note.d);
     notePick.rotation.y = t * 2;
   }
@@ -3300,10 +3301,10 @@ function updateBoss(dt, live) {
     if (!BOSS.lit && k >= 0.5) { BOSS.lit = true; scy.scythe.fire.forEach(c => { c.visible = true; }); crunch(0.6, 700, 0.3); }
     if (t >= D) bossPhase(BOSS.after);
   } else if (ph === 'opening') {
-    const sw = BOSS.kind === 'switchman', ix = sw ? LANES[BOSS.lane] : 0;    // the Switchman hops into a lane; the others stand centred
+    const sw = BOSS.kind === 'switchman', ix = sw ? LANES[BOSS.lane] : 0;    // The Conductor hops into a lane; the others stand centred
     BOSS.rel += (IDLE.rel - BOSS.rel) * Math.min(1, dt * 3); BOSS.y += (IDLE.y - BOSS.y) * Math.min(1, dt * 3); BOSS.x += (ix - BOSS.x) * Math.min(1, dt * (sw ? 6 : 3));
     const a = BOSS.note, prevD = p.d - st.speed * dt;
-    // Molgrath's and the Switchman's notes roll out from the boss toward you, so they are in view the whole way, at any speed
+    // Molgrath's and The Conductor's notes roll out from the boss toward you, so they are in view the whole way, at any speed
     const NT = BOSS.kind === 'molgrath' ? MOL_NOTE : BOSS.kind === 'switchman' ? SW_NOTE : null;
     if (NT) { a.rel -= NT.rel / NT.time * dt; a.d = p.d + a.rel; }
     if (live && st.mode === 'run' && a.d < p.d + 1.3 && a.d > prevD - 1.3 && Math.abs(LANES[a.lane] - p.x) < 1.1 && p.y < 2.6) {
@@ -3331,7 +3332,7 @@ function updateBoss(dt, live) {
       const h = BOSS.target, mg = BOSS.kind === 'molgrath', sw = BOSS.kind === 'switchman';
       bossRoot().updateMatrixWorld(true); h.g.getWorldPosition(_hp);
       burst(_hp.x, _hp.y, _hp.z, 1.6, 8);
-      if (sw) { swm.coreCap.position.y = 0; crunch(0.5, 1200, 0.3); }     // the Switchman's one core just takes the hit and slams shut
+      if (sw) { swm.coreCap.position.y = 0; crunch(0.5, 1200, 0.3); }     // The Conductor's one core just takes the hit and slams shut
       else {
         h.alive = false;
         if (mg) { h.orb.visible = false; h.halo.visible = false; h.stump.visible = true; }
@@ -3347,7 +3348,7 @@ function updateBoss(dt, live) {
       else {
         toast(sw ? `${bang}! ${BOSS.heads} more ${word}` : `${bang}! ${BOSS.heads} ${word} left`);
         nextQueue();
-        // every second hit the Switchman changes phase: a 2 s breakdown in which nothing can hurt you
+        // every second hit The Conductor changes phase: a 2 s breakdown in which nothing can hurt you
         bossPhase(sw && (BOSS.heads === 4 || BOSS.heads === 2) ? 'shift' : 'hurt');
       }
     }
@@ -3741,7 +3742,7 @@ const sfx = {
   },
   // the note lands: a bright hit, like a string snapping
   noteHit() { beep(880, 0.3, 'sawtooth', 0.09, 900); beep(1320, 0.45, 'square', 0.05, -500, 0.03); },
-  // the Switchman: a three-note diesel horn, and the iron clank of a rail switch being thrown
+  // The Conductor: a three-note diesel horn, and the iron clank of a rail switch being thrown
   horn() { [196, 247, 294].forEach((f, i) => { beep(f, 1.1, 'sawtooth', 0.05, 0, i * 0.02); beep(f * 1.01, 1.1, 'square', 0.025, 0, i * 0.02); }); },
   clank() { beep(1100, 0.07, 'square', 0.07, -500); beep(380, 0.25, 'sawtooth', 0.06, -200, 0.04); crunch(0.3, 1500, 0.3); }
 };
@@ -4211,82 +4212,16 @@ function refreshMenu() {
   const nb = BOSS_INFO[savedNextBoss()], bi = $('bossInfo');
   bi.textContent = '';
   const bn = document.createElement('b'); bn.textContent = 'Next boss: ' + nb.menu + '.';
-  bi.append(bn, ' ' + (nb.he || 'He') + ' attacks at 1,200 m. ' + nb.how + ' Molgrath, Scyrus and the Switchman take turns.');
+  bi.append(bn, ' ' + (nb.he || 'He') + ' attacks at 1,200 m. ' + nb.how + ' Molgrath, Scyrus and The Conductor take turns.');
 }
 refreshMenu();
 function show(id, on) { $(id).hidden = !on; }
-
-// ---------- save points ----------
-// Every SAVE_EVERY metres you run through a glowing gate. Passing it snapshots the run (distance, score, coins,
-// which boss is next). If you crash later, the game-over screen offers to continue from that gate, once per gate.
-const SAVE_EVERY = 1000;
-const SAVE = { nextD: SAVE_EVERY, point: null, flash: 0 };
-const saveGate = (() => {
-  const g = new THREE.Group();
-  const glowMat = new THREE.MeshBasicMaterial({ color: 0x3dffb0, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
-  const postMat = new THREE.MeshLambertMaterial({ color: 0x24443a });
-  for (const sx of [-1, 1]) {
-    const post = new THREE.Mesh(new THREE.BoxGeometry(0.6, 10, 0.6), postMat); post.position.set(sx * 4.6, 5, 0); g.add(post);
-    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.2, 9.4, 0.7), glowMat); strip.position.set(sx * 4.25, 5, 0); g.add(strip);
-  }
-  const beam = new THREE.Mesh(new THREE.BoxGeometry(9.8, 0.7, 0.6), postMat); beam.position.set(0, 10, 0); g.add(beam);
-  const c = document.createElement('canvas'); c.width = 512; c.height = 96;
-  const x = c.getContext('2d');
-  x.font = 'bold 64px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
-  x.shadowColor = '#3dffb0'; x.shadowBlur = 18; x.fillStyle = '#d8fff0'; x.fillText('SAVE POINT', 256, 50);
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(7, 1.3), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
-  sign.position.set(0, 8.9, 0.35); g.add(sign);
-  g.visible = false; scene.add(g);
-  return { g, glowMat };
-})();
-// snapshot the run at distance d
-function savePoint(d) {
-  const boss = BOSS.active;   // mid-fight: the snapshot rewinds to just before this boss
-  SAVE.point = {
-    d, score: st.score, coins: st.coins, lifeUsed: st.lifeUsed, used: false,
-    bossNext: boss ? BOSS.kind : st.bossNext, bossCount: boss ? st.bossCount - 1 : st.bossCount,
-    nextBossD: boss ? d + 150 : Math.max(st.nextBossD, d + 150),
-    nextDragonD: Math.max(st.nextDragonD, d + 150), nextSlapD: Math.max(st.nextSlapD, d + 200)
-  };
-  SAVE.flash = 1; sfx.power(); toast('Save point! ' + Math.floor(d).toLocaleString() + ' m');
-}
-function updateSave(dt) {
-  if (p.d >= SAVE.nextD) { savePoint(SAVE.nextD); SAVE.nextD += SAVE_EVERY; }
-  // the gate stands at the next save point, or at the one you just passed until it is behind the camera
-  const just = SAVE.point && p.d - SAVE.point.d < 25 ? SAVE.point.d : SAVE.nextD;
-  saveGate.g.position.z = -just;
-  saveGate.g.visible = just - p.d < 300;
-  if (SAVE.flash > 0) SAVE.flash = Math.max(0, SAVE.flash - dt * 1.5);
-  saveGate.glowMat.opacity = 0.6 + 0.25 * Math.sin(performance.now() / 200) + SAVE.flash * 0.4;
-}
-function clearSave() { SAVE.point = null; SAVE.nextD = SAVE_EVERY; saveGate.g.visible = false; }
-function continueRun() {
-  const S = SAVE.point;
-  if (st.mode !== 'over' || !S || S.used) return;
-  S.used = true;
-  ensureAudio();
-  resetRun();
-  p.d = st.dist = S.d;
-  st.score = S.score; st.coins = st.coinBase = S.coins; st.distBase = S.d;   // only what you earn from here gets banked again
-  st.lifeUsed = S.lifeUsed;
-  st.bossNext = S.bossNext; st.bossCount = S.bossCount;
-  st.nextBossD = S.nextBossD; st.nextDragonD = S.nextDragonD; st.nextSlapD = S.nextSlapD;
-  st.nextRowD = S.d + 45; st.nextPowerD = S.d + 100; st.milestone = (Math.floor(S.d / 500) + 1) * 500;
-  nextB['-1'] = nextB['1'] = S.d - 20;
-  SAVE.nextD = S.d + SAVE_EVERY;
-  addCoinLine(1, S.d + 18, 8, 0);
-  p.invulnT = 2;
-  st.mode = 'run';
-  show('over', false); show('hud', true);
-  applyMusic();
-  toast('Back at the save point!');
-}
 
 // ---------- game flow ----------
 function resetRun() {
   clearWorld();
   Object.assign(p, { soloT: -1, lane: 1, fromLane: 1, x: 0, y: 0, vy: 0, d: 0, grounded: true, rollT: 0, rollQueued: false, stumbleT: 0, slowT: 0, invulnT: 0, dieT: 0, roofT: 99, floorY: 0 });
-  st.score = 0; st.coins = 0; st.dist = 0; st.coinBase = 0; st.distBase = 0; st.speed = speedRamp ? 18 : STEADY_SPEED; st.shakeT = 0;
+  st.score = 0; st.coins = 0; st.dist = 0; st.speed = speedRamp ? 18 : STEADY_SPEED; st.shakeT = 0;
   for (const k in st.power) st.power[k] = 0;
   st.powerMax = {}; st.lifeUsed = false;
   st.nextRowD = 70; st.nextPowerD = 160; st.busyEnd = [0, 0, 0]; st.trainEnd = [0, 0, 0];
@@ -4304,8 +4239,9 @@ function resetRun() {
   $('vig').classList.remove('on');
 }
 function startRun() {
+  debugEndStage();
   ensureAudio();
-  resetRun(); clearSave();
+  resetRun();
   st.mode = 'run';
   show('menu', false); show('over', false); show('paused', false); show('hud', true);
   PROG.runs++; saveProg();
@@ -4322,7 +4258,8 @@ function resume() {
   st.mode = 'run'; show('paused', false); last = performance.now(); applyMusic();
 }
 function toMenu() {
-  resetRun(); clearSave();
+  debugEndStage();
+  resetRun();
   st.mode = 'menu';
   show('paused', false); show('over', false); show('hud', false); show('menu', true); applyMusic();
   for (const k in powerRows) powerRows[k].row.hidden = true;
@@ -4330,7 +4267,7 @@ function toMenu() {
   $('startBtn').focus();
 }
 function crash(reason) {
-  if (st.mode !== 'run' || p.soloT >= 0) return;   // nothing touches him mid-solo
+  if (st.mode !== 'run' || p.soloT >= 0 || DEBUG.stage) return;   // nothing touches him mid-solo or on the debug stage
   if (perk('bones') && !st.lifeUsed) {
     st.lifeUsed = true;
     p.invulnT = 2.5; p.stumbleT = 0; p.slowT = 0; p.vy = Math.max(p.vy, 0);
@@ -4350,10 +4287,9 @@ function gameOver() {
   const isBest = score > PROG.best;
   if (isBest) PROG.best = score;
   const metres = Math.max(0, st.dist);
-  PROG.km += Math.max(0, metres - st.distBase);
+  PROG.km += metres;
   if (metres > PROG.bestKm) PROG.bestKm = metres;
-  const gained = st.coins - st.coinBase;
-  PROG.bank += gained; PROG.earned += gained;
+  PROG.bank += st.coins; PROG.earned += st.coins;
   saveProg();                                   // the run is banked the moment it ends
   $('reason').textContent = st.reason;
   $('oScore').textContent = score.toLocaleString();
@@ -4365,13 +4301,10 @@ function gameOver() {
   ob.append('Next boss: ', obn);
   show('over', true); show('hud', false); $('warn').hidden = true;
   for (const k in powerRows) powerRows[k].row.hidden = true;
-  const sp = SAVE.point, cb = $('contBtn');
-  cb.hidden = !sp || sp.used;
-  if (sp) cb.textContent = 'Continue from ' + Math.floor(sp.d).toLocaleString() + ' m';
-  (cb.hidden ? $('againBtn') : cb).focus();
+  $('againBtn').focus();
 }
 function stumble(msg) {
-  if (p.soloT >= 0) return;
+  if (p.soloT >= 0 || DEBUG.stage) return;
   if (p.stumbleT > 0) { crash('Tripped twice. ' + msg); return; }
   p.stumbleT = 4; p.slowT = 0.6; st.shakeT = 0.3;
   sfx.bump();
@@ -4398,68 +4331,125 @@ function act(a) {
   }
 }
 // ---------- debug mode ----------
-// Off by default. Turn it on by adding ?debug to the end of the game's address, or press Ctrl+Shift+D in the game
-// (it remembers until you press it again). A small panel lists the keys.
-// To add a trigger, add one line to DEBUG_TRIGGERS: the key, a label for the panel, and a function that does it.
-const DEBUG = { on: false, slow: 1, panel: null };
+// Off by default. Turn it on with the "Rail Dash (Debug)" desktop shortcut, by adding ?debug to the end of the
+// game's address, or by pressing Ctrl+Shift+D (remembered until you press it again).
+// Each scene opens the practice stage: an empty track where nothing can hurt you, and the animation plays
+// over and over until you pick another one or press Esc. Pick a scene with its number key or click it in the panel.
+// To add a scene, add one entry to DEBUG_TRIGGERS: the key, a label, and play() which starts the animation.
+// loop: true replays it whenever it finishes; tool: true is a setting (slow motion, freeze) rather than a scene.
+const DEBUG = { on: false, slow: 1, panel: null, freeze: false, holdAim: false, stage: false, cur: null, idleT: 0, lastToggle: 0 };
 const DEBUG_TRIGGERS = [
-  { key: 'Digit1', label: 'Demon smash attack (from the start)', run() { debugClear(); startSlap(); } },
-  { key: 'Digit2', label: 'Demon smash: jump straight to the arm raise', run() {
-    debugClear(); startSlap(); enterPhase('look', true); enterPhase('aim', true);
+  { key: 'Digit1', label: 'Demon smash (whole attack)', loop: true, play() { startSlap(); } },
+  { key: 'Digit2', label: 'Demon smash from the arm raise', loop: true, play() { startSlap(); enterPhase('look', true); enterPhase('aim', true); } },
+  { key: 'Digit3', label: 'Demon arm hovering (press 3 again to smash)', play() {
+    startSlap(); enterPhase('look', true); enterPhase('aim', true); DEBUG.holdAim = true;
   } },
-  { key: 'Digit3', label: 'Make a save point right here', run() { savePoint(p.d); } },
-  { key: 'Digit4', label: 'Crash now (to test continuing)', run() {
-    p.invulnT = 0; st.power.jet = 0; st.lifeUsed = true; crash('Debug crash.');
-  } },
-  { key: 'Digit5', label: 'Molgrath boss fight', run() { debugBoss('molgrath'); } },
-  { key: 'Digit6', label: 'Molgrath with 1 core left', run() {
+  { key: 'Digit4', label: 'Guitar solo (draw, play, put away)', loop: true, play() { p.soloT = 0; p.rollT = 0; } },
+  { key: 'Digit5', label: 'Molgrath boss fight', loop: true, play() { debugBoss('molgrath'); } },
+  { key: 'Digit6', label: 'Molgrath with 1 core left', loop: true, play() {
     debugBoss('molgrath');
     mol.cores.slice(0, -1).forEach(c => { c.alive = false; c.orb.visible = false; c.halo.visible = false; c.stump.visible = true; });
     BOSS.heads = 1; updateBossBar(); nextQueue();
   } },
-  { key: 'Digit0', label: 'Slow motion on/off (quarter speed)', any: true, run() {
-    DEBUG.slow = DEBUG.slow === 1 ? 0.25 : 1; toast(DEBUG.slow === 1 ? 'Normal speed' : 'Slow motion');
-  } }
+  { key: 'Digit7', label: 'Scyrus boss fight', loop: true, play() { debugBoss('scyrus'); } },
+  { key: 'Digit8', label: 'The Conductor boss fight', loop: true, play() { debugBoss('switchman'); } },
+  { key: 'Digit9', label: 'Freeze the picture on/off', tool: true, play() { DEBUG.freeze = !DEBUG.freeze; debugPanel(); } },
+  { key: 'Digit0', label: 'Slow motion on/off', tool: true, play() { DEBUG.slow = DEBUG.slow === 1 ? 0.25 : 1; debugPanel(); } }
 ];
 // starts a boss right now without counting it in your saved stats
 function debugBoss(kind) {
-  debugClear();
   const keep = { fought: PROG.fought, next: PROG.next, f: PROG[PROG_KEYS[kind][0]] };
   st.bossNext = kind; startBoss();
   PROG.fought = keep.fought; PROG.next = keep.next; PROG[PROG_KEYS[kind][0]] = keep.f; saveProg();
 }
-// clears whatever is happening so a trigger starts clean
+// clears whatever is happening so a scene starts clean
 function debugClear() {
-  if (BOSS.active) { endBoss(false); st.nextBossD = p.d + BOSS_EVERY; }
+  if (BOSS.active) endBoss(false);
   if (SL.active) hideSlap();
+  dragons.forEach(hideDragon);
+  p.soloT = -1; DEBUG.holdAim = false;
+}
+// open the practice stage (from the menu, a run, or the game-over screen) and play a scene in it
+function debugPlay(d) {
+  if (d.tool) { d.play(); return; }
+  if (DEBUG.stage && DEBUG.cur === d && DEBUG.holdAim) { DEBUG.holdAim = false; debugPanel(); return; }   // 3 again: let it smash
+  if (!DEBUG.stage || st.mode !== 'run') {
+    resetRun(); clearWorld();
+    st.mode = 'run'; DEBUG.stage = true;
+    show('menu', false); show('over', false); show('paused', false); show('hud', true); $('prog').hidden = true;
+    ensureAudio(); applyMusic(); last = performance.now();
+  }
+  debugClear();
+  DEBUG.cur = d; DEBUG.idleT = 0;
+  d.play();
+  debugPanel();
+}
+function debugEndStage() {
+  if (!DEBUG.stage) return;
+  DEBUG.stage = false; DEBUG.cur = null; DEBUG.freeze = false;
+  debugClear(); debugPanel();
+}
+// runs every frame of the practice stage: keeps the track empty and you safe, and replays the scene
+function stageTick(dt) {
+  p.stumbleT = 0;   // crash() and stumble() do nothing on the stage, so you stay safe without the blinking
+  st.nextRowD = p.d + 400; st.nextPowerD = p.d + 1e6;
+  st.nextDragonD = st.nextSlapD = st.nextBossD = p.d + 1e6;
+  const d = DEBUG.cur;
+  if (!d || !d.loop) return;
+  if (SL.active || BOSS.active || p.soloT >= 0) { DEBUG.idleT = 0; return; }
+  DEBUG.idleT += dt;
+  if (DEBUG.idleT > 0.8) { DEBUG.idleT = 0; debugClear(); d.play(); }
+}
+// the panel in the bottom-left corner: one button per scene, the one playing is highlighted
+function debugPanel() {
+  if (!DEBUG.panel) {
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:60;padding:8px 10px;border-radius:8px;background:rgba(10,4,4,.86);color:#ffd9a0;font:12px/1.4 monospace;max-width:calc(100vw - 32px)';
+    document.body.appendChild(el); DEBUG.panel = el;
+  }
+  const el = DEBUG.panel; el.textContent = '';
+  el.hidden = !DEBUG.on;
+  const head = document.createElement('div'); head.style.cssText = 'font-weight:bold;margin-bottom:4px';
+  head.textContent = DEBUG.stage ? 'DEBUG STAGE (Esc to leave)' : 'DEBUG: pick a scene (Ctrl+Shift+D hides this)';
+  el.appendChild(head);
+  for (const d of DEBUG_TRIGGERS) {
+    const b = document.createElement('button');
+    const on = d === DEBUG.cur || (d.key === 'Digit9' && DEBUG.freeze) || (d.key === 'Digit0' && DEBUG.slow !== 1);
+    b.style.cssText = 'display:block;width:100%;text-align:left;margin:2px 0;padding:3px 6px;border:0;border-radius:5px;cursor:pointer;font:inherit;' +
+      (on ? 'background:#ffb347;color:#2a0a00' : 'background:rgba(255,255,255,.08);color:inherit');
+    b.textContent = d.key.replace('Digit', '') + '  ' + d.label;
+    b.addEventListener('click', e => { e.currentTarget.blur(); debugPlay(d); });
+    el.appendChild(b);
+  }
 }
 function debugSet(on) {
   DEBUG.on = on;
   try { if (on) localStorage.setItem('raildash.debug', '1'); else localStorage.removeItem('raildash.debug'); } catch (e) { /* storage blocked: still works for this session */ }
-  if (!DEBUG.panel) {
-    const el = document.createElement('div');
-    el.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:50;padding:8px 10px;border-radius:8px;background:rgba(10,4,4,.82);color:#ffd9a0;font:12px/1.5 monospace;pointer-events:none;white-space:pre';
-    document.body.appendChild(el); DEBUG.panel = el;
-  }
-  DEBUG.panel.textContent = 'DEBUG (Ctrl+Shift+D to hide)\n' + DEBUG_TRIGGERS.map(d => d.key.replace('Digit', '') + '  ' + d.label).join('\n');
-  DEBUG.panel.hidden = !on;
-  if (!on) DEBUG.slow = 1;
+  if (!on) { DEBUG.slow = 1; DEBUG.freeze = false; if (DEBUG.stage) toMenu(); }
+  debugPanel();
+  toast(on ? 'Debug mode on' : 'Debug mode off');
 }
 function debugKey(e) {
-  if (e.ctrlKey && e.shiftKey && e.code === 'KeyD') { e.preventDefault(); debugSet(!DEBUG.on); return true; }
-  if (!DEBUG.on || e.repeat) return false;
+  if (e.ctrlKey && e.shiftKey && e.code === 'KeyD') {
+    e.preventDefault();
+    // one press can arrive as two key events; without this it switched on and straight back off
+    const now = performance.now();
+    if (!e.repeat && now - DEBUG.lastToggle > 400) { DEBUG.lastToggle = now; debugSet(!DEBUG.on); }
+    return true;
+  }
+  if (!DEBUG.on || e.repeat || e.ctrlKey || e.altKey || e.metaKey) return false;
+  if (DEBUG.stage && e.code === 'Escape') { e.preventDefault(); toMenu(); return true; }
   const code = e.code.replace('Numpad', 'Digit');   // number-pad keys work the same as the top-row number keys
   const d = DEBUG_TRIGGERS.find(x => x.key === code);
   if (!d) return false;
   e.preventDefault();
-  if (!d.any && st.mode !== 'run') { toast('Start a run first'); return true; }
-  d.run();
+  debugPlay(d);
   return true;
 }
 {
   let on = false;
   try { on = new URLSearchParams(location.search).has('debug') || localStorage.getItem('raildash.debug') === '1'; } catch (e) { /* no storage: off */ }
-  if (on) debugSet(true);
+  if (on) { DEBUG.on = true; debugPanel(); }
 }
 const keyMap = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'jump', KeyW: 'jump', Space: 'jump', ArrowDown: 'roll', KeyS: 'roll' };
 window.addEventListener('keydown', e => {
@@ -4469,8 +4459,6 @@ window.addEventListener('keydown', e => {
   if (!$('prog').hidden) { if (e.code === 'Escape') { e.preventDefault(); closeProg(); } return; }
   if (shopOpen) { if (e.code === 'Escape') { e.preventDefault(); closeShop(); } return; }
   if (e.code === 'KeyP' || e.code === 'Escape') { if (st.mode === 'run') pause(); else if (st.mode === 'paused') resume(); e.preventDefault(); return; }
-  if (st.mode === 'over' && e.code === 'KeyC' && !$('contBtn').hidden) { e.preventDefault(); continueRun(); return; }
-  if (st.mode === 'over' && (e.code === 'Space' || e.code === 'Enter') && document.activeElement === $('contBtn')) { e.preventDefault(); continueRun(); return; }
   if ((st.mode === 'menu' || st.mode === 'over') && (e.code === 'Space' || e.code === 'Enter')) { e.preventDefault(); startRun(); return; }
   const a = keyMap[e.code];
   if (a && st.mode === 'run') { e.preventDefault(); if (!e.repeat) act(a); }
@@ -4489,7 +4477,6 @@ window.addEventListener('pointerup', () => { sw = null; });
 window.addEventListener('pointercancel', () => { sw = null; });
 $('startBtn').addEventListener('click', startRun);
 $('againBtn').addEventListener('click', startRun);
-$('contBtn').addEventListener('click', continueRun);
 $('pauseBtn').addEventListener('click', pause);
 $('resumeBtn').addEventListener('click', resume);
 $('quitBtn').addEventListener('click', toMenu);
@@ -4633,7 +4620,7 @@ function renderProg() {
     ['Distance run', fmtKm(PROG.km)], ['Longest run', fmtKm(PROG.bestKm)], ['Best score', PROG.best.toLocaleString()],
     ['Runs', PROG.runs.toLocaleString()], ['Coins earned', PROG.earned.toLocaleString()], ['Coins spent', PROG.spent.toLocaleString()],
     ['Bosses fought', PROG.fought.toLocaleString()], ['Bosses beaten', PROG.beaten.toLocaleString()],
-    ['Scyrus', PROG.scyB + ' / ' + PROG.scyF], ['Molgrath', PROG.molB + ' / ' + PROG.molF], ['The Switchman', PROG.swB + ' / ' + PROG.swF],
+    ['Scyrus', PROG.scyB + ' / ' + PROG.scyF], ['Molgrath', PROG.molB + ' / ' + PROG.molF], ['The Conductor', PROG.swB + ' / ' + PROG.swF],
     ['Outfits', PROG.fits.length + ' / ' + OUTFITS.length], ['Powers on', (POWER_LIST.length - PROG.off.length) + ' / ' + POWER_LIST.length]
   ];
   const g = $('progStats'); g.textContent = '';
@@ -4809,6 +4796,7 @@ function update(dt) {
     return;
   }
   if (!running) return;
+  if (DEBUG.stage) stageTick(dt);
 
   // STEADY holds one pace all run; RAMP is the old curve that climbs to 62
   const base = speedRamp
@@ -4824,7 +4812,6 @@ function update(dt) {
 
   const mult = Math.min(10, 1 + Math.floor(st.dist / 500)) * scoreX();
   st.score += s * dt * mult * 0.6;
-  updateSave(dt);
   if (st.dist >= st.milestone) { toast(`${st.milestone.toLocaleString()} m! Speeding up`); st.milestone += 500; }
 
   // timers
@@ -5161,7 +5148,7 @@ let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000) * DEBUG.slow;
   last = now;
-  if (st.mode !== 'paused') {
+  if (st.mode !== 'paused' && !DEBUG.freeze) {
     update(dt);
     animate(dt, now / 1000);
   }
