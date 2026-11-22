@@ -2228,7 +2228,13 @@ function hideMolFx() {
 const SW_IDLE = { rel: 14, y: 0 };
 const SW_SIDE_X = -7.2;                         // the lava channel beside the track is its rail
 const SW_NOTE = { rel: 12, time: 1.7 };         // the note rolls out from its parked core toward you
-const SW_WARN = { lock: 1.2, switch: 1.4, combo: 1.5, shunt: 1.5 };   // phase 1 warnings; phases 2 and 3 cut them to 85% and 70%
+const SW_WARN = { lock: 1.2, switch: 1.4, combo: 1.5 };   // phase 1 warnings; phases 2 and 3 cut them to 85% and 70%
+// the Shunt Charge: it drops back behind you (back), a yellow stripe shows the lane it is lining up on (aim),
+// the stripe turns red when it locks onto that lane (lock), then it rams through. It charges 'charges' times in a row.
+// aim must stay between 0.4 and 0.5 s, and it does not change with the fight's phase or the ninja perk.
+const SW_SHUNT = { back: 0.9, aim: 0.45, lock: 0.6, charges: 3 };
+// the drop back only takes time when it starts ahead of you; on the 2nd and 3rd charge it is already behind you
+function swShuntBack() { return BOSS.rel0 > 0 ? SW_SHUNT.back : 0; }
 const SW_GAP_T = 0.24;                          // a gap is this many seconds of running long: always shorter than a jump (0.64 s)
 const SW_GAP_CUE = 0.5;                         // "JUMP!" this long before a gap: any reaction from 0.1 to 0.5 s clears it
 const rustTex = canvasTex(256, 256, (g, w, h) => {
@@ -2383,7 +2389,7 @@ function bossDur(ph) {
   if (BOSS.kind === 'molgrath') d = MOL_DUR[ph] * (ph === 'waveWarn' || ph === 'ringWarn' ? ninjaWarn() : 1);
   else if (BOSS.kind === 'switchman') {
     // the attacks themselves end when their hazards are behind you, so they get no fixed length
-    d = { intro: 3.0, idle: 0.75, lock: 99, switch: 99, combo: 99, shuntBack: 0.9 + SW_WARN.shunt * swWarnK(), shuntRun: 1.6, shift: 2.0,
+    d = { intro: 3.0, idle: 0.75, lock: 99, switch: 99, combo: 99, shuntBack: swShuntBack() + SW_SHUNT.aim + SW_SHUNT.lock, shuntRun: 1.6, shift: 2.0,
       opening: 99, draw: SOLO.draw, strike: SOLO.play, hurt: 0.9, recover: 0.6, die: 2.6 }[ph];
   } else {
     const n = ninjaK();
@@ -2846,8 +2852,8 @@ function animateMol(dt, t) {
 }
 // ---------- The Conductor's fight logic ----------
 // 6 hits in three phases of two. Phase 1: Lane Lock and Track Switch. Phase 2: the hook arm is gone,
-// warnings are shorter and it adds the Shunt Charge. Phase 3: lamps dark, black smoke, the Combo and a
-// double charge. Between attacks it parks ahead in a lane and opens its core: grab the note and hit it.
+// warnings are shorter and it adds the Shunt Charge, three rams in a row. Phase 3: lamps dark, black smoke
+// and the Combo. Between attacks it parks ahead in a lane and opens its core: grab the note and hit it.
 function swPhaseNum() { return BOSS.heads >= 5 ? 1 : BOSS.heads >= 3 ? 2 : 3; }
 function swWarnK() { return [1, 0.85, 0.7][swPhaseNum() - 1] * ninjaWarn(); }
 // a barricade thrown into a lane: it lands on the red X when the warning ends, 0.55 s before you get there
@@ -2961,7 +2967,7 @@ function updateSw(dt, live) {
     toIdle();
     if (t >= D) {
       const m = BOSS.queue.shift();
-      if (m === 'shunt') { BOSS.shunts = swPhaseNum() === 3 ? 1 : 0; bossPhase('shuntBack'); }
+      if (m === 'shunt') { BOSS.shunts = SW_SHUNT.charges - 1; bossPhase('shuntBack'); }
       else bossPhase(m);
     }
     return true;
@@ -2973,10 +2979,10 @@ function updateSw(dt, live) {
     return true;
   }
   if (ph === 'shuntBack') {
-    // it drops back out of sight, then its lamps chase while it lines up on your lane; the lane locks 0.6 s before the charge
-    const back = Math.min(1, t / 0.9);
+    // it drops back out of sight, lines up on your lane (yellow stripe), locks on (red stripe), then charges
+    const bt = swShuntBack(), back = bt > 0 ? Math.min(1, t / bt) : 1;
     BOSS.rel = BOSS.rel0 + (-30 - BOSS.rel0) * easeK(back); BOSS.y = 0;
-    if (!BOSS.locked) { BOSS.lane = p.lane; if (t >= D - 0.6) { BOSS.locked = true; sfx.lock(); } }
+    if (!BOSS.locked) { BOSS.lane = p.lane; if (t >= bt + SW_SHUNT.aim) { BOSS.locked = true; sfx.lock(); } }
     const tx = back < 1 && BOSS.rel0 > 0 ? SW_SIDE_X : LANES[BOSS.lane];
     BOSS.x += (tx - BOSS.x) * Math.min(1, dt * (BOSS.locked ? 12 : 4));
     if (t >= D) bossPhase('shuntRun');
@@ -3153,7 +3159,8 @@ function animateSw(dt, t) {
   });
   // the lane it is about to ram through
   const shunting = ph === 'shuntBack' || ph === 'shuntRun';
-  F.shuntStrip.visible = shunting && BOSS.rel < 3;
+  // it appears (yellow) the moment it starts lining up, so the yellow lasts exactly SW_SHUNT.aim
+  F.shuntStrip.visible = ph === 'shuntRun' ? BOSS.rel < 3 : ph === 'shuntBack' && BOSS.t >= swShuntBack();
   if (F.shuntStrip.visible) {
     const near = Math.max(p.d - 14, p.d + BOSS.rel + 3), far = p.d + 45;
     F.shuntStrip.position.set(LANES[BOSS.lane], 0.055, -(near + far) / 2); F.shuntStrip.scale.set(2.2, Math.max(0.1, far - near), 1);
@@ -4336,7 +4343,8 @@ function act(a) {
 // Each scene opens the practice stage: an empty track where nothing can hurt you, and the animation plays
 // over and over until you pick another one or press Esc. Pick a scene with its number key or click it in the panel.
 // To add a scene, add one entry to DEBUG_TRIGGERS: the key, a label, and play() which starts the animation.
-// loop: true replays it whenever it finishes; tool: true is a setting (slow motion, freeze) rather than a scene.
+// loop: true replays it whenever it finishes; tool: true is a setting (slow motion, freeze) rather than a scene;
+// tick() runs every frame while the scene plays. Letter keys work too, but not W A S D or P, which steer and pause.
 const DEBUG = { on: false, slow: 1, panel: null, freeze: false, holdAim: false, stage: false, cur: null, idleT: 0, lastToggle: 0 };
 const DEBUG_TRIGGERS = [
   { key: 'Digit1', label: 'Demon smash (whole attack)', loop: true, play() { startSlap(); } },
@@ -4353,6 +4361,11 @@ const DEBUG_TRIGGERS = [
   } },
   { key: 'Digit7', label: 'Scyrus boss fight', loop: true, play() { debugBoss('scyrus'); } },
   { key: 'Digit8', label: 'The Conductor boss fight', loop: true, play() { debugBoss('switchman'); } },
+  { key: 'KeyC', label: 'The Conductor Shunt Charge (3 in a row)', loop: true, play() {
+    debugBoss('switchman'); BOSS.queue = ['shunt']; bossPhase('idle');
+  }, tick() {   // after the three charges it would open its core; send it straight back into the charge instead
+    if (BOSS.active && BOSS.phase === 'opening') { BOSS.queue = ['shunt']; bossPhase('idle'); }
+  } },
   { key: 'Digit9', label: 'Freeze the picture on/off', tool: true, play() { DEBUG.freeze = !DEBUG.freeze; debugPanel(); } },
   { key: 'Digit0', label: 'Slow motion on/off', tool: true, play() { DEBUG.slow = DEBUG.slow === 1 ? 0.25 : 1; debugPanel(); } }
 ];
@@ -4395,6 +4408,7 @@ function stageTick(dt) {
   st.nextRowD = p.d + 400; st.nextPowerD = p.d + 1e6;
   st.nextDragonD = st.nextSlapD = st.nextBossD = p.d + 1e6;
   const d = DEBUG.cur;
+  if (d && d.tick) d.tick();   // a scene can steer the fight every frame
   if (!d || !d.loop) return;
   if (SL.active || BOSS.active || p.soloT >= 0) { DEBUG.idleT = 0; return; }
   DEBUG.idleT += dt;
@@ -4417,7 +4431,7 @@ function debugPanel() {
     const on = d === DEBUG.cur || (d.key === 'Digit9' && DEBUG.freeze) || (d.key === 'Digit0' && DEBUG.slow !== 1);
     b.style.cssText = 'display:block;width:100%;text-align:left;margin:2px 0;padding:3px 6px;border:0;border-radius:5px;cursor:pointer;font:inherit;' +
       (on ? 'background:#ffb347;color:#2a0a00' : 'background:rgba(255,255,255,.08);color:inherit');
-    b.textContent = d.key.replace('Digit', '') + '  ' + d.label;
+    b.textContent = d.key.replace(/^(Digit|Key)/, '') + '  ' + d.label;
     b.addEventListener('click', e => { e.currentTarget.blur(); debugPlay(d); });
     el.appendChild(b);
   }

@@ -5,7 +5,7 @@ Read this at the start of every session. These are the owner's standing rules fo
 ## Every change
 1. **Save it to GitHub.** Commit every change, to the game and to the debug stage, on `main` and run `git push origin main`. The remote URL pins the Doctram user on purpose, so leave it as it is.
 2. **Change the debug stage to match.** Every change to the main game must also show up on the debug stage. If a boss, attack, animation or power-up changes (for example Scyrus), update its debug scene too, so the debug version always plays exactly like the real game. The stage runs the same game code, so most changes carry over by themselves. Scenes that set up a moment by hand, such as "Molgrath with 1 core left", must be updated whenever the thing they set up changes. Then open the scene and check that it still works.
-3. **Add a debug scene for anything new.** New bosses, attacks, animations and power-ups get their own entry in `DEBUG_TRIGGERS` in `index.html`. Number keys 0-9 are all used, so new scenes need letter keys. The "Rail Dash (Debug)" desktop shortcut opens this same `index.html` with `?debug`, so it updates by itself.
+3. **Add a debug scene for anything new.** New bosses, attacks, animations and power-ups get their own entry in `DEBUG_TRIGGERS` in `index.html`. Number keys 0-9 are all used, so new scenes need letter keys (not W, A, S, D or P). C is taken. The "Rail Dash (Debug)" desktop shortcut opens this same `index.html` with `?debug`, so it updates by itself.
 4. **Explain it simply.** The owner uses this project to learn. After each change, explain what changed and how it works, like a short lesson.
 5. **Remember new rules.** When the owner says "remember this" or gives a lasting rule, add it to this file and push it.
 
@@ -16,7 +16,7 @@ Read this at the start of every session. These are the owner's standing rules fo
 4. **Comment in plain English.** Write short comments that say what the code does in the game, such as "he keeps running and can't be hurt", so a learner can follow them.
 5. **Don't break saves.** Saved progress lives in localStorage (`rd-save2`). Never rename stored ids, such as `switchman` (shown to players as The Conductor). Change display text only. Any new saved field needs a safe default for old saves.
 6. **Never let the game freeze or crash.** Guard against missing data the way `bossDur` does: log an error and fall back to a safe value.
-7. **Keep it fair.** Every hazard needs a warning the player can react to. Fire rings must stay more than 0.64 s apart, the jump's airtime. The guitar solo must stay under 1.3 s.
+7. **Keep it fair.** Every hazard needs a warning the player can react to. Fire rings must stay more than 0.64 s apart, the jump's airtime. The guitar solo must stay under 1.3 s. The Conductor's Shunt Charge shows its yellow stripe for 0.4 to 0.5 s before it turns red, and it charges three times in a row (`SW_SHUNT`).
 8. **Check before you push.** After editing, parse the script to catch syntax errors. Then test the change in Chrome when you can.
 9. **Change only what was asked.** If you notice another problem, mention it instead of fixing it quietly.
 
