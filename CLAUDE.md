@@ -1,14 +1,26 @@
-# Rail Dash: standing rules for Claude
+# Rail Dash: rules for Claude
 
-These are the owner's standing rules for this project. Follow them on every change without being asked.
+Read this at the start of every session. These are the owner's standing rules for this project. Follow them every time, without being asked.
 
-1. **Push every change.** Commit it on `main` and run `git push origin main`. The remote URL pins the Doctram user on purpose, so leave it as it is.
+## Every change
+1. **Push it.** Commit on `main` and run `git push origin main`. The remote URL pins the Doctram user on purpose, so leave it as it is.
 2. **Add a debug scene.** Whenever it makes sense (bosses, dragons, power-ups, attacks, animations), add an entry to `DEBUG_TRIGGERS` in `index.html` so the change can be watched on the practice stage. Number keys 0-9 are all used, so new scenes need letter keys.
-3. **Keep the debug version current.** The "Rail Dash (Debug)" desktop shortcut opens this same `index.html` with `?debug`, so it updates by itself. Check that the debug scene for the change works.
-4. **Explain simply.** The owner uses this project to learn, so explain each change like a short lesson.
-5. **Don't break saves.** Internal ids such as `switchman` (shown to players as The Conductor) are stored in save data. Rename display text only.
+3. **Keep the debug version current.** The "Rail Dash (Debug)" desktop shortcut opens this same `index.html` with `?debug`, so it updates by itself. Check that the change works in debug mode.
+4. **Explain it simply.** The owner uses this project to learn. After each change, explain what changed and how it works, like a short lesson.
+5. **Remember new rules.** When the owner says "remember this" or gives a lasting rule, add it to this file and push it.
+
+## Every time you write code
+1. **Keep it one file.** The whole game is `index.html`: one classic script inside an IIFE, with three.js r128 loaded from cdnjs. Don't split it into modules or add build tools.
+2. **Follow the existing patterns.** Bosses share one system: `bossDur`, `bossPhase`, `updateBoss` and `animateBoss` branch on `BOSS.kind`. Extend that instead of building a parallel system. Do the same for other features: find how similar things are already done and copy that shape.
+3. **Name your numbers.** Put timings, speeds and sizes in named constants near the related code, such as `MOL_DUR` or `SOLO`, not as bare numbers inside logic.
+4. **Comment in plain English.** Write short comments that say what the code does in the game, such as "he keeps running and can't be hurt", so a learner can follow them.
+5. **Don't break saves.** Saved progress lives in localStorage (`rd-save2`). Never rename stored ids, such as `switchman` (shown to players as The Conductor). Change display text only. Any new saved field needs a safe default for old saves.
+6. **Never let the game freeze or crash.** Guard against missing data the way `bossDur` does: log an error and fall back to a safe value.
+7. **Keep it fair.** Every hazard needs a warning the player can react to. Fire rings must stay more than 0.64 s apart, the jump's airtime. The guitar solo must stay under 1.3 s.
+8. **Check before you push.** After editing, parse the script to catch syntax errors. Then test the change in Chrome when you can.
+9. **Change only what was asked.** If you notice another problem, mention it instead of fixing it quietly.
 
 ## Project facts
-- The whole game is one file, `index.html`: three.js loaded from cdnjs, one script inside an IIFE.
 - Bosses: Molgrath, Scyrus and The Conductor. They take turns through `BOSS_ORDER`.
 - Debug mode: `?debug`, Ctrl+Shift+D, or the debug desktop shortcut. Debug keys open a practice stage where nothing can hurt you.
+- Testing in Chrome: the extension can't open file:// pages, so serve the folder with a small local node server. The game clamps each frame to 50 ms (`frame()`), and it pauses when the tab loses focus.
