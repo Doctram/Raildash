@@ -3,9 +3,9 @@
 Read this at the start of every session. These are the owner's standing rules for this project. Follow them every time, without being asked.
 
 ## Every change
-1. **Push it.** Commit on `main` and run `git push origin main`. The remote URL pins the Doctram user on purpose, so leave it as it is.
-2. **Add a debug scene.** Whenever it makes sense (bosses, dragons, power-ups, attacks, animations), add an entry to `DEBUG_TRIGGERS` in `index.html` so the change can be watched on the practice stage. Number keys 0-9 are all used, so new scenes need letter keys.
-3. **Keep the debug version current.** The "Rail Dash (Debug)" desktop shortcut opens this same `index.html` with `?debug`, so it updates by itself. Check that the change works in debug mode.
+1. **Save it to GitHub.** Commit every change, to the game and to the debug stage, on `main` and run `git push origin main`. The remote URL pins the Doctram user on purpose, so leave it as it is.
+2. **Change the debug stage to match.** Every change to the main game must also show up on the debug stage. If a boss, attack, animation or power-up changes (for example Scyrus), update its debug scene too, so the debug version always plays exactly like the real game. The stage runs the same game code, so most changes carry over by themselves. Scenes that set up a moment by hand, such as "Molgrath with 1 core left", must be updated whenever the thing they set up changes. Then open the scene and check that it still works.
+3. **Add a debug scene for anything new.** New bosses, attacks, animations and power-ups get their own entry in `DEBUG_TRIGGERS` in `index.html`. Number keys 0-9 are all used, so new scenes need letter keys. The "Rail Dash (Debug)" desktop shortcut opens this same `index.html` with `?debug`, so it updates by itself.
 4. **Explain it simply.** The owner uses this project to learn. After each change, explain what changed and how it works, like a short lesson.
 5. **Remember new rules.** When the owner says "remember this" or gives a lasting rule, add it to this file and push it.
 
