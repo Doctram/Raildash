@@ -48,7 +48,6 @@ body{
   background:var(--sun);border:2px solid var(--ink);box-shadow:2px 2px 0 var(--ink);
 }
 .chip.dist{background:var(--paper)}
-.chip.perk{background:var(--mint)}
 .hud-right{display:flex;gap:8px;align-items:center}
 .coins{
   display:flex;align-items:center;gap:8px;font-family:var(--display);font-size:20px;
@@ -61,17 +60,6 @@ body{
   background:var(--paper);box-shadow:3px 3px 0 var(--ink);font-family:var(--display);font-size:15px;color:var(--ink);cursor:pointer;
 }
 .icon-btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
-.powers{
-  position:fixed;left:max(16px, env(safe-area-inset-left, 0px));
-  bottom:calc(env(safe-area-inset-bottom, 0px) + 16px);
-  display:flex;flex-direction:column;gap:6px;pointer-events:none;
-}
-.power{
-  display:flex;align-items:center;gap:8px;background:var(--paper);border:2px solid var(--ink);
-  border-radius:10px;padding:4px 8px;box-shadow:2px 2px 0 var(--ink);font-weight:800;font-size:13px;width:190px;
-}
-.power .bar{flex:1;height:8px;border-radius:4px;background:#e6dfcf;overflow:hidden;border:1px solid var(--ink)}
-.power .fill{height:100%;width:100%}
 .toast{
   position:fixed;left:50%;top:28%;transform:translate(-50%,-50%) scale(.9);
   font-family:var(--display);font-size:clamp(22px,5vw,36px);color:var(--sun);
@@ -121,13 +109,6 @@ kbd{
 .code-box{width:100%;min-height:76px;font:600 12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;
   border:2px solid var(--ink);border-radius:10px;padding:8px;resize:vertical;word-break:break-all;background:#fff;color:var(--ink)}
 .warn-box{border:2px solid #b3261e;background:#fff2f0;color:#7a1810;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:700;line-height:1.4}
-.pow-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:8px}
-.pow-row{display:flex;align-items:flex-start;gap:8px;border:2px solid var(--ink);border-radius:10px;padding:7px 9px;background:#fff;cursor:pointer}
-.pow-row input{margin-top:3px;width:15px;height:15px;accent-color:var(--pop);flex:none}
-.pow-row span{font-size:12px;line-height:1.3}
-.pow-row b{display:block;font-weight:800;font-size:13px}
-.pow-row.off{opacity:.5;background:#f3f0ea}
-.pow-row .tame{display:block;margin-top:3px;font-style:normal;font-size:11px;font-weight:800;letter-spacing:.03em;color:#b3261e}
 .btn{
   font-family:var(--display);font-size:22px;color:var(--paper);background:var(--pop);
   border:4px solid var(--ink);border-radius:16px;padding:14px 18px 11px;box-shadow:5px 5px 0 var(--ink);cursor:pointer;
@@ -206,7 +187,7 @@ button:focus-visible{outline:4px solid var(--violet);outline-offset:3px}
 .coin-ic.sm{width:14px;height:14px;border-width:1.5px}
 .btn:disabled{filter:grayscale(.7);opacity:.7;cursor:not-allowed}
 .row .btn{flex:1}
-@media (max-width:420px){.card{padding:20px 18px}.power{width:160px}}
+@media (max-width:420px){.card{padding:20px 18px}}
 </style>
 
 <div id="game"></div>
@@ -216,14 +197,13 @@ button:focus-visible{outline:4px solid var(--violet);outline-offset:3px}
 <div class="hud" id="hud" hidden>
   <div class="hud-left">
     <div class="score" id="score">0</div>
-    <div class="chips"><span class="chip" id="mult">x1</span><span class="chip dist" id="dist">0 m</span><span class="chip dist" id="spd">65 km/h</span><span class="chip perk" id="perkChip" hidden></span></div>
+    <div class="chips"><span class="chip" id="mult">x1</span><span class="chip dist" id="dist">0 m</span><span class="chip dist" id="spd">65 km/h</span></div>
   </div>
   <div class="hud-right">
     <div class="coins"><span class="coin-ic"></span><span id="coins">0</span></div>
     <button class="icon-btn" id="pauseBtn" aria-label="Pause">II</button>
   </div>
 </div>
-<div class="powers" id="powers"></div>
 <div class="toast" id="toast"></div>
 <div class="warn" id="warn" hidden>Dragon incoming</div>
 <div class="bossbar" id="bossBar" hidden><b>SCYRUS</b><span class="pips" id="bossPips"><i></i><i></i><i></i><i></i><i></i></span></div>
@@ -308,12 +288,9 @@ button:focus-visible{outline:4px solid var(--violet);outline-offset:3px}
       <h2 class="shop-title">Wardrobe</h2>
       <div class="coins"><span class="coin-ic"></span><span id="shopCoins">0</span></div>
     </div>
-    <p class="hint" style="margin:0 0 4px">One runner, every power. The outfits are pure stage style &mdash; they all play the same.</p>
+    <p class="hint" style="margin:0 0 4px">The outfits are pure stage style &mdash; they all play the same.</p>
     <div style="overflow:auto;min-height:0;padding-right:2px">
       <div class="shop-grid" id="shopGrid" style="overflow:visible"></div>
-      <h3 style="font-family:var(--display);font-weight:400;font-size:20px;margin:14px 0 2px">His powers</h3>
-      <p class="hint" style="margin:0 0 8px">He has all eight. <b>Iron Shield</b> and <b>Hellborn</b> start switched off &mdash; with those two on, nothing in the run can touch you. Turn them on whenever you want that.</p>
-      <div class="pow-grid" id="powGrid"></div>
     </div>
     <div class="row">
       <button class="btn" id="shopAct">Equipped</button>
@@ -386,15 +363,11 @@ const freshProg = () => ({
   fought: 0, beaten: 0,                           // bosses, all kinds
   scyF: 0, scyB: 0, molF: 0, molB: 0, swF: 0, swB: 0,   // bosses, per kind (fought / beaten)
   fits: ['fringe'], fit: 'fringe',                // outfits unlocked / worn
-  off: ['knight', 'hell'],                        // powers switched off; these two start off (see TAME)
   next: 'molgrath'
 });
 let PROG = freshProg();
 let saveNote = '';
 
-// with these on, barriers and dragons simply cannot touch you, so the running
-// half of the game has no stakes. owned, but off unless the player asks for them.
-const TAME = ['knight', 'hell'];
 function cleanProg(o) {
   const was = Number(o.v) || 0;
   const f = freshProg();
@@ -402,9 +375,6 @@ function cleanProg(o) {
   f.fits = (Array.isArray(f.fits) ? f.fits : []).filter(id => OUTFITS.some(x => x.id === id));
   if (!f.fits.includes('fringe')) f.fits.unshift('fringe');
   if (!f.fits.includes(f.fit)) f.fit = f.fits[0];
-  f.off = (Array.isArray(f.off) ? f.off : []).filter(id => POWER_LIST.some(p => p.id === id));
-  // saves made before v3 had every power on, which made obstacles pointless
-  if (was < 3) f.off = Array.from(new Set(f.off.concat(TAME)));
   f.v = 3;
   f.next = ['scyrus', 'molgrath', 'switchman'].includes(f.next) ? f.next : 'molgrath';
   for (const k of ['best', 'bestKm', 'km', 'bank', 'earned', 'spent', 'runs', 'fought', 'beaten', 'scyF', 'scyB', 'molF', 'molB', 'swF', 'swB'])
@@ -470,12 +440,6 @@ const TOP = 3.15;          // train roof height
 const RAMP_L = 6.5;
 const CAR_L = 10, CAR_GAP = 0.5;
 const PLANE_L = 320, TILE = 5, WALL_TILE = 20;
-const POWERS = {
-  magnet:   { name: 'Coin Magnet',    color: '#ff4f7b', dur: 12 },
-  jet:      { name: 'Jetpack',        color: '#ff8c42', dur: 8 },
-  sneakers: { name: 'Super Sneakers', color: '#2ec4b6', dur: 12 },
-  double:   { name: 'Double Score',   color: '#8e6cff', dur: 15 }
-};
 
 // ---------- renderer ----------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -758,18 +722,8 @@ shadow.rotation.x = -Math.PI / 2;
 scene.add(shadow);
 
 // ---------- the character ----------
-// one runner, the Guitar Legend, who carries every power in the game.
+// one runner, the Guitar Legend.
 // the outfits are cosmetic: late-'60s stage wear, one per era.
-const POWER_LIST = [
-  { id: 'legend', name: 'Encore',          desc: 'Your score counts double all run.' },
-  { id: 'bones',  name: 'Extra Life',      desc: 'Survive one crash per run and rise again.' },
-  { id: 'robo',   name: 'Coin Magnet',     desc: 'Coins pull in to you the whole run.' },
-  { id: 'gold',   name: 'Midas Touch',     desc: 'Every coin is worth 3.' },
-  { id: 'ninja',  name: 'Ninja Reflexes',  desc: 'Every attack gives you 60% more warning.' },
-  { id: 'blaze',  name: 'Fired Up',        desc: 'Power-ups last twice as long.' },
-  { id: 'knight', name: 'Iron Shield',     desc: 'Smash straight through barriers and gates.', tame: true },
-  { id: 'hell',   name: 'Hellborn',        desc: 'Dragons fly right through you.', tame: true }
-];
 const OUTFITS = [
   { id: 'fringe', name: 'White Fringe', era: 'Festival field', price: 0,
     top: 0xf0e7d2, pants: 0x3457b2, skin: 0x6b4226, shoe: 0xd8cba8, hat: 'band', hatColor: 0xd62828,
@@ -788,12 +742,8 @@ const OUTFITS = [
     face: 'eyes', pattern: 0xe9a23b, sash: 0xe8e2d4, gtr: 0xffffff, neck: 0x8b5a2b, glow: 0x1a0205 }
 ];
 const hex = n => '#' + n.toString(16).padStart(6, '0');
-loadProg();                                   // OUTFITS and POWER_LIST exist now, so the save can be checked against them
+loadProg();                                   // OUTFITS exists now, so the save can be checked against it
 const fitById = id => OUTFITS.find(o => o.id === id) || OUTFITS[0];
-// he has every power; the player can switch any of them off to make the run harder
-const perk = id => !PROG.off.includes(id);
-const scoreX = () => (st.power.double > 0 ? 2 : 1) * (perk('legend') ? 2 : 1);
-const hasMagnet = () => st.power.magnet > 0 || perk('robo') || perk('gold');
 
 // ---------- player model ----------
 const player = { root: new THREE.Group(), model: null };
@@ -886,43 +836,10 @@ function buildCharacter(def) {
   [legL, legR].forEach(l => { box(0.24, 0.66, 0.26, pants, 0, -0.33, 0, l); box(0.26, 0.14, 0.36, shoe, 0, -0.7, -0.04, l); });
   const armL = limb(-0.42, 1.42), armR = limb(0.42, 1.42);
   [armL, armR].forEach(a => { box(0.18, 0.56, 0.2, top, 0, -0.26, 0, a); box(0.16, 0.14, 0.16, skin, 0, -0.6, 0, a); });
-  // jetpack
-  const jet = new THREE.Group(); jet.position.set(0, 1.2, 0.42); model.add(jet);
-  const tankGeo = new THREE.CylinderGeometry(0.14, 0.14, 0.62, 12);
-  const tankMat = M(0x9aa1ab);
-  const flameMat = new THREE.MeshBasicMaterial({ color: 0xffa62b });
-  const flames = [];
-  [-0.17, 0.17].forEach(x => {
-    const t = new THREE.Mesh(tankGeo, tankMat); t.position.x = x; jet.add(t);
-    const f = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.6, 10), flameMat); f.rotation.x = Math.PI; f.position.set(x, -0.62, 0); jet.add(f); flames.push(f);
-  });
-  jet.visible = false;
-  Object.assign(player, { model, legL, legR, armL, armR, jet, flames, guitar: gtr });
+  Object.assign(player, { model, legL, legR, armL, armR, guitar: gtr });
 }
 buildCharacter(fitById(PROG.fit));
 
-// ---------- power-up meshes ----------
-function makePowerMesh(type) {
-  const g = new THREE.Group();
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.75, 0.06, 8, 32), new THREE.MeshBasicMaterial({ color: 0xffffff }));
-  g.add(ring);
-  const col = new THREE.Color(POWERS[type].color);
-  const m = new THREE.MeshLambertMaterial({ color: col, emissive: col.clone().multiplyScalar(0.35) });
-  if (type === 'magnet') {
-    const u = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.13, 8, 20, Math.PI), m); u.rotation.z = Math.PI; g.add(u);
-    const tipM = new THREE.MeshLambertMaterial({ color: 0xe0e6ee });
-    [-0.34, 0.34].forEach(x => { const t = new THREE.Mesh(new THREE.BoxGeometry(0.27, 0.2, 0.27), tipM); t.position.set(x, 0.08, 0); g.add(t); });
-  } else if (type === 'jet') {
-    [-0.17, 0.17].forEach(x => { const t = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.6, 12), m); t.position.x = x; g.add(t); });
-  } else if (type === 'sneakers') {
-    const s = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.28, 0.62), m); s.position.y = 0.05; g.add(s);
-    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.1, 0.7), new THREE.MeshLambertMaterial({ color: 0xffffff })); sole.position.y = -0.14; g.add(sole);
-    g.children[1].rotation.y = 0.6; sole.rotation.y = 0.6;
-  } else {
-    const o = new THREE.Mesh(new THREE.OctahedronGeometry(0.42), m); g.add(o);
-  }
-  return g;
-}
 
 // ---------- dragon models ----------
 const DRAGON_V = 22;          // how fast dragons fly toward you
@@ -1602,7 +1519,7 @@ function enterPhase(ph, live) {
     sfx.boom(); st.shakeT = 0.55; shockT = 0.6;
     shock.position.set(LANES[SL.lane], 0.06, -SL.dSlam); shock.visible = true;
     smashImpact(LANES[SL.lane], SL.dSlam);
-    const safe = p.invulnT > 0 || st.power.jet > 0;
+    const safe = p.invulnT > 0;
     if (live && st.mode === 'run') {
       if (!safe && Math.abs(p.x - LANES[SL.lane]) < 1.45 && Math.abs(p.d - SL.dSlam) < 4.5 && p.y < 3) {
         SL.hit = true; crash('The demon smashed you flat.');
@@ -1615,10 +1532,10 @@ function enterPhase(ph, live) {
   }
 }
 function bonus(msg) {
-  const b = 300 * scoreX();
+  const b = 300;
   st.score += b; toast(msg + ' +' + b);
 }
-function phaseDur(ph) { return ATK_T[ph] * (ph === 'lock' && perk('ninja') ? 1.6 : 1); }
+function phaseDur(ph) { return ATK_T[ph]; }
 function updateSlap(dt, live) {
   if (!SL.active) return;
   SL.t += dt;
@@ -1639,7 +1556,7 @@ function updateSlap(dt, live) {
   }
   if (SL.phase === 'swing' && live && st.mode === 'run' && !SL.hit) {
     const hx = SL.side * 7 * (1 - 2 * Math.min(1, SL.t / ATK_T.swing));
-    const safe = p.invulnT > 0 || st.power.jet > 0;
+    const safe = p.invulnT > 0;
     const top = p.y + (p.rollT > 0 ? 0.85 : 1.8);
     if (!safe && Math.abs(p.x - hx) < 1.0 && top > SWAT_Y - 0.55 && p.y < SWAT_Y + 0.6) {
       SL.hit = true; crash('The demon swatted you off the tracks.');
@@ -2060,7 +1977,6 @@ const MOL_WAVE_HOT = 0.5;         // seconds into the wave warning when the stri
 const JUMP_CUE = 0.62;            // "JUMP!" this long before a ring reaches you: any reaction from 0.1 to 0.5 s clears it
 const MOL_NOTE = { rel: 32, time: 2.4 };   // the note rolls out from his feet and takes 2.4 s to reach you
 const MOL_MARK_REL = 0.6;         // meteor target circles sit right under you
-const ninjaWarn = () => perk('ninja') ? 1.6 : 1;
 const lavaTex = canvasTex(128, 256, (g, w, h) => {
   g.fillStyle = '#ff5a00'; g.fillRect(0, 0, w, h);
   const blob = (x, y, r, c0, c1) => {
@@ -2231,7 +2147,7 @@ const SW_NOTE = { rel: 12, time: 1.7 };         // the note rolls out from its p
 const SW_WARN = { lock: 1.2, switch: 1.4, combo: 1.5 };   // phase 1 warnings; phases 2 and 3 cut them to 85% and 70%
 // the Shunt Charge: it drops back behind you (back), a yellow stripe shows the lane it is lining up on (aim),
 // the stripe turns red when it locks onto that lane (lock), then it rams through. It charges 'charges' times in a row.
-// aim must stay between 0.4 and 0.5 s, and it does not change with the fight's phase or the ninja perk.
+// aim must stay between 0.4 and 0.5 s, and it does not change with the fight's phase.
 // run is how long the dash takes, in seconds: SMALLER is a FASTER dash (1.6 was the original)
 const SW_SHUNT = { back: 0.9, aim: 0.45, lock: 0.6, run: 1.6, charges: 3 };
 // the drop back only takes time when it starts ahead of you; on the 2nd and 3rd charge it is already behind you
@@ -2379,7 +2295,6 @@ function savedNextBoss() { return BOSS_INFO[PROG.next] ? PROG.next : 'molgrath';
 const BOSS = { active: false, kind: 'scyrus', phase: '', t: 0, rel: 220, y: 25, x: 0, heads: 5, queue: [], first: true,
   shots: [], lane: 1, locked: false, hit: false, cued: false, side: 1, th0: 0, th1: 0, target: null, sx: 0, sy: 0, srel: 0, rot: 0,
   after: '', note: { lane: 1, d: 0, rel: 0 }, lit: false, wave: null, rings: [], drops: [], shunts: 0, rel0: 0, clearSaid: false };
-const ninjaK = () => perk('ninja') ? 1.5 : 1;
 // the guitar solo after he grabs a note: swing the guitar round to the front, play the note (the strike phase), swing it back.
 // draw + strike + stow stays under 1.3 s; he keeps running and can't be hurt for all of it
 const SOLO = { draw: 0.3, play: 0.65, stow: 0.3 };
@@ -2387,15 +2302,14 @@ const SOLO_TOTAL = SOLO.draw + SOLO.play + SOLO.stow;
 const MOL_DUR = { intro: 3.0, idle: 0.4, waveWarn: 0.85, waveRun: 0.45, ringWarn: 0.5, rings: 99, meteor: 99, opening: 99, draw: SOLO.draw, strike: SOLO.play, hurt: 0.7, recover: 0.45, die: 2.6 };
 function bossDur(ph) {
   let d;
-  if (BOSS.kind === 'molgrath') d = MOL_DUR[ph] * (ph === 'waveWarn' || ph === 'ringWarn' ? ninjaWarn() : 1);
+  if (BOSS.kind === 'molgrath') d = MOL_DUR[ph];
   else if (BOSS.kind === 'switchman') {
     // the attacks themselves end when their hazards are behind you, so they get no fixed length
     d = { intro: 3.0, idle: 0.75, lock: 99, switch: 99, combo: 99, shuntBack: swShuntBack() + SW_SHUNT.aim + SW_SHUNT.lock, shuntRun: SW_SHUNT.run, shift: 2.0,
       opening: 99, draw: SOLO.draw, strike: SOLO.play, hurt: 0.9, recover: 0.6, die: 2.6 }[ph];
   } else {
-    const n = ninjaK();
-    d = { intro: 3.0, idle: 0.75, fire: 99, reapIn: 0.7, reapWind: 0.7 * n, reapSwing: 0.7, reapOut: 0.7, chargeUp: 1.0, chargeDive: 2.9, chargeReturn: 1.6,
-      stunIn: 0.6, stun: 2.0 * n, ignite: 1.15, opening: 99, draw: SOLO.draw, strike: SOLO.play, hurt: 0.9, recover: 0.6, die: 2.6 }[ph];
+    d = { intro: 3.0, idle: 0.75, fire: 99, reapIn: 0.7, reapWind: 0.7, reapSwing: 0.7, reapOut: 0.7, chargeUp: 1.0, chargeDive: 2.9, chargeReturn: 1.6,
+      stunIn: 0.6, stun: 2.0, ignite: 1.15, opening: 99, draw: SOLO.draw, strike: SOLO.play, hurt: 0.9, recover: 0.6, die: 2.6 }[ph];
   }
   if (!(d > 0)) { console.error('Boss phase has no duration:', BOSS.kind, ph); return 1; }   // never freeze a fight
   return d;
@@ -2438,10 +2352,8 @@ function startBoss() {
   const pipBox = $('bossPips'); pipBox.textContent = '';
   for (let i = 0; i < info.points; i++) pipBox.appendChild(document.createElement('i'));
   $('bossCard').querySelector('b').textContent = info.name; $('bossCard').querySelector('span').textContent = info.title;
-  // the track clears: barriers and power-ups vanish
+  // the track clears: barriers vanish
   for (const b of barriers) if (!b.hit && b.d > p.d - 2) { b.hit = true; b.fly = 1.2; b.vy = 10; }
-  for (const u of pickups) if (!u.taken) { u.taken = true; scene.remove(u.mesh); burst(u.x, u.y, -u.d, 0.8, 2); }
-  if (st.power.jet > 0.3) st.power.jet = 0.3;
   demon.flash = 1;
   if (kind !== 'switchman') { sfx.growl(); sfx.roar(); }
   $('bossBar').hidden = false; updateBossBar();
@@ -2457,7 +2369,7 @@ function endBoss(won) {
   $('bossBar').hidden = true; $('bossCard').hidden = true;
   if (won) {
     PROG.beaten++; PROG[PROG_KEYS[BOSS.kind][1]]++; saveProg();
-    st.coins += 100; st.score += 2000 * scoreX();
+    st.coins += 100; st.score += 2000;
     toast(BOSS_INFO[BOSS.kind].name + ' DEFEATED! +100 coins');
     sfx.power();
     st.nextRowD = p.d + 70; st.nextDragonD = p.d + 320; st.nextSlapD = p.d + 520; st.nextBossD = p.d + BOSS_EVERY;
@@ -2529,7 +2441,7 @@ function launchFireball(head, lane) {
   if (!f) return;
   scy.root.updateMatrixWorld(true);
   head.mouth.getWorldPosition(_hp);
-  Object.assign(f, { busy: true, lane, t: 0, T: 0.8 * (perk('ninja') ? 1.35 : 1), fx: _hp.x, fy: _hp.y, frel: -_hp.z - p.d, done: false, after: 0, hist: [] });
+  Object.assign(f, { busy: true, lane, t: 0, T: 0.8, fx: _hp.x, fy: _hp.y, frel: -_hp.z - p.d, done: false, after: 0, hist: [] });
   f.g.visible = true; f.marker.visible = true;
   fireballs.push(f);
   beep(260, 0.3, 'sawtooth', 0.06, -150);
@@ -2542,7 +2454,7 @@ function updateFireballs(dt, live) {
     let rel = f.frel * (1 - u), x = f.fx + (X - f.fx) * u, y = f.fy + (1.1 - f.fy) * u + Math.sin(Math.PI * u) * 1.4;
     if (u >= 1 && !f.done) {
       f.done = true;
-      const safe = p.invulnT > 0 || st.power.jet > 0;
+      const safe = p.invulnT > 0;
       if (live && st.mode === 'run' && !safe && Math.abs(p.x - X) < 1.2 && p.y < 1.75) {
         burst(p.x, 1.2, -p.d, 1.4, 6); crash('Scyrus burned you with a fireball.');
         f.after = 99;
@@ -2579,7 +2491,7 @@ function molPhase(ph) {
     BOSS.rings = [0, 1, 2].map(i => ({ at: i * MOL_RING_GAP, rel: MOL_IDLE.rel, launched: false, cued: false, passed: false, gone: false, foot: i % 2 }));
     sfx.growl();
   } else if (ph === 'meteor') {
-    const T = MOL_METEOR.fall * ninjaWarn();
+    const T = MOL_METEOR.fall;
     BOSS.drops = [0, 1, 2].map(i => ({ at: MOL_METEOR.first + i * (T + MOL_METEOR.gap), T, t: 0, started: false, done: false, lanes: null, fx: null, fy: 0, frel: 0 }));
     sfx.roar();
   } else if (ph === 'opening') {
@@ -2596,7 +2508,7 @@ function molPhase(ph) {
 function updateMol(dt, live) {
   const ph = BOSS.phase, t = BOSS.t, D = bossDur(ph), k = Math.min(1, t / D);
   const run = live && st.mode === 'run';
-  const safe = p.invulnT > 0 || st.power.jet > 0;
+  const safe = p.invulnT > 0;
   const inLane = lanes => lanes.some(l => Math.abs(p.x - LANES[l]) < 1.25);
   if (BOSS.wave && BOSS.wave.fade > 0 && ph !== 'waveRun') BOSS.wave.fade = Math.max(0, BOSS.wave.fade - dt);   // spilled lava cools off
   if (ph === 'intro') {
@@ -2695,7 +2607,7 @@ function molWarnText() {
 }
 function molWarnHot() {
   const ph = BOSS.phase, w = BOSS.wave;
-  if ((ph === 'waveWarn' && BOSS.t >= MOL_WAVE_HOT * ninjaWarn()) || ph === 'waveRun') return !!w && w.lanes.includes(p.lane);
+  if ((ph === 'waveWarn' && BOSS.t >= MOL_WAVE_HOT) || ph === 'waveRun') return !!w && w.lanes.includes(p.lane);
   if (ph === 'ringWarn' || ph === 'rings') return BOSS.rings.some(r => r.cued && !r.passed);
   if (ph === 'meteor') { const d = BOSS.drops.find(x => x.started && !x.done); return !!d && d.lanes.includes(p.lane); }
   return false;
@@ -2774,7 +2686,7 @@ function animateMol(dt, t) {
       const near = p.d + 1, far = p.d + (ph === 'waveRun' ? Math.min(w.front, MOL_IDLE.rel - 1) : MOL_IDLE.rel - 1);
       if (far > near + 0.2) {
         show = true;
-        const red = ph === 'waveRun' || BOSS.t >= 0.7 * ninjaWarn();
+        const red = ph === 'waveRun' || BOSS.t >= 0.7;
         s.position.set(LANES[w.lanes[i]], 0.055 + i * 0.003, -(near + far) / 2); s.scale.set(2.2, far - near, 1);
         s.material.color.setHex(red ? 0xff2d55 : 0xffc93c);
         s.material.opacity = red ? 0.35 + 0.25 * (Math.sin(t * 22) * 0.5 + 0.5) : 0.22 + 0.12 * (Math.sin(t * 6) * 0.5 + 0.5);
@@ -2856,7 +2768,7 @@ function animateMol(dt, t) {
 // warnings are shorter and it adds the Shunt Charge, three rams in a row. Phase 3: lamps dark, black smoke
 // and the Combo. Between attacks it parks ahead in a lane and opens its core: grab the note and hit it.
 function swPhaseNum() { return BOSS.heads >= 5 ? 1 : BOSS.heads >= 3 ? 2 : 3; }
-function swWarnK() { return [1, 0.85, 0.7][swPhaseNum() - 1] * ninjaWarn(); }
+function swWarnK() { return [1, 0.85, 0.7][swPhaseNum() - 1]; }
 // a barricade thrown into a lane: it lands on the red X when the warning ends, 0.55 s before you get there
 function swBar(lane, warn) {
   const b = swFx.bars.find(x => !x.on);
@@ -2916,7 +2828,7 @@ function swPhase(ph) {
 // barricades and gaps live on from the moment they are placed until they are well behind you
 function swHazards(dt, live) {
   const run = live && st.mode === 'run';
-  const safe = p.invulnT > 0 || st.power.jet > 0;
+  const safe = p.invulnT > 0;
   const prevD = p.d - st.speed * dt;
   for (const b of swFx.bars) {
     if (!b.on) continue;
@@ -2953,7 +2865,7 @@ function swHazards(dt, live) {
 function updateSw(dt, live) {
   const ph = BOSS.phase, t = BOSS.t, D = bossDur(ph), k = Math.min(1, t / D);
   const run = live && st.mode === 'run';
-  const safe = p.invulnT > 0 || st.power.jet > 0;
+  const safe = p.invulnT > 0;
   swHazards(dt, live);
   if (live && st.mode !== 'run') return true;
   const toIdle = () => {
@@ -3268,7 +3180,7 @@ function updateBoss(dt, live) {
     }
     if (ph === 'reapSwing' && live && st.mode === 'run' && !BOSS.hit) {
       const tipX = PIVX + REAP_R * Math.sin(reapTheta(t));
-      const safe = p.invulnT > 0 || st.power.jet > 0;
+      const safe = p.invulnT > 0;
       if (!safe && Math.abs(p.x - tipX) < 1.0 && p.y < 0.95) { BOSS.hit = true; crash('Scyrus reaped you with his scythe.'); }
     }
     if (t >= D) {
@@ -3284,7 +3196,7 @@ function updateBoss(dt, live) {
     if (t >= D) bossPhase('chargeDive');
   } else if (ph === 'chargeDive') {
     const prevRel = BOSS.rel;
-    const v = 84 / D, t0 = 70 / v, lockAt = t0 - 1.15 * (perk('ninja') ? 1.6 : 1);
+    const v = 84 / D, t0 = 70 / v, lockAt = t0 - 1.15;
     BOSS.rel = 70 - v * t;
     if (!BOSS.locked) {
       BOSS.lane = p.lane;
@@ -3294,7 +3206,7 @@ function updateBoss(dt, live) {
     const yk = Math.max(0, Math.min(1, 1 - t / Math.max(0.1, t0 - 0.35)));
     BOSS.y = -1.6 + (9 + 1.6) * Math.pow(yk, 1.4);
     if (live && st.mode === 'run' && BOSS.locked && !BOSS.hit && BOSS.rel <= 1.6 && prevRel >= -1.6) {
-      const safe = p.invulnT > 0 || st.power.jet > 0;
+      const safe = p.invulnT > 0;
       if (!safe && Math.abs(p.x - LANES[BOSS.lane]) < 1.5) { BOSS.hit = true; crash('Scyrus cut you down with his fire scythe.'); }
     }
     if (prevRel >= -2 && BOSS.rel < -2 && !BOSS.hit && live && st.mode === 'run') { toast('Dodged!'); sfx.whoosh(); }
@@ -3349,7 +3261,7 @@ function updateBoss(dt, live) {
       BOSS.heads--; updateBossBar(); bolt.visible = false;
       noteShot.visible = false; noteTrail.forEach(s => { s.visible = false; });
       st.shakeT = 0.3; sfx.boom(); sfx.noteHit();
-      st.score += 500 * scoreX();
+      st.score += 500;
       const word = sw ? (BOSS.heads === 1 ? 'hit' : 'hits') : mg ? (BOSS.heads === 1 ? 'core' : 'cores') : (BOSS.heads === 1 ? 'head' : 'heads');
       const bang = sw ? 'CLANK' : mg ? 'CRACK' : 'CLANG';
       if (BOSS.heads <= 0) { toast(sw ? 'CLANK! It’s off the rails!' : mg ? 'CRACK! The last core shatters!' : 'CLANG! The last head falls!'); bossPhase('die'); }
@@ -3468,16 +3380,15 @@ function animateBoss(dt, t) {
 const p = { soloT: -1, lane: 1, fromLane: 1, x: 0, y: 0, vy: 0, d: 0, grounded: true, rollT: 0, rollQueued: false, phase: 0, stumbleT: 0, slowT: 0, invulnT: 0, dieT: 0, roofT: 99, floorY: 0 };
 const st = {
   mode: 'menu', score: 0, coins: 0, speed: 16, dist: 0,
-  power: { magnet: 0, jet: 0, sneakers: 0, double: 0 },
-  shakeT: 0, nextRowD: 0, nextPowerD: 0, busyEnd: [0, 0, 0], trainEnd: [0, 0, 0],
-  jetCoinD: 0, jetLane: 1, milestone: 1000, combo: 0, comboT: 0, reason: ''
+  shakeT: 0, nextRowD: 0, busyEnd: [0, 0, 0], trainEnd: [0, 0, 0],
+  milestone: 1000, combo: 0, comboT: 0, reason: ''
 };
-let trains = [], barriers = [], coins = [], pickups = [], buildings = [];
+let trains = [], barriers = [], coins = [], buildings = [];
 const nextB = { '-1': -20, '1': -20 };
 
 function clearWorld() {
-  [...trains, ...barriers, ...coins, ...pickups].forEach(o => scene.remove(o.mesh));
-  trains = []; barriers = []; coins = []; pickups = [];
+  [...trains, ...barriers, ...coins].forEach(o => scene.remove(o.mesh));
+  trains = []; barriers = []; coins = [];
   buildings.forEach(b => { b.meshes.forEach(m => scene.remove(m)); b.fires.forEach(f => scene.remove(f.g)); });
   buildings = []; fires = [];
   nextB['-1'] = -20; nextB['1'] = -20;
@@ -3608,19 +3519,12 @@ function animateDrips(t) {
     }
   }
 }
-function addPickup(lane, D, type) {
-  const m = makePowerMesh(type);
-  m.position.set(LANES[lane], 1.3, -D);
-  scene.add(m);
-  pickups.push({ type, x: LANES[lane], d: D, y: 1.3, mesh: m });
-}
 function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
 function spawnRow(D) {
   const diff = Math.min(1, st.dist / 2200);
   const pLow = 0.24 + 0.12 * diff, pHigh = 0.18 + 0.12 * diff;
   let coinLineDone = false, blockers = 0;
-  let powerDone = D < st.nextPowerD;
   for (const l of shuffle([0, 1, 2])) {
     const r = Math.random();
     if (r < pLow && blockers < 2) {
@@ -3631,11 +3535,6 @@ function spawnRow(D) {
       blockers++;
       addBarrier(l, D, 'high');
       if (Math.random() < 0.4) for (let i = -2; i <= 2; i++) addCoin(LANES[l], D + i * 1.6, 0.6);
-    } else if (!powerDone) {
-      const types = ['magnet', 'jet', 'sneakers', 'double'];
-      addPickup(l, D + 3, types[(Math.random() * types.length) | 0]);
-      powerDone = true;
-      st.nextPowerD = D + 280 + Math.random() * 240;
     } else if (!coinLineDone && Math.random() < 0.7) {
       addCoinLine(l, D, 6 + (Math.random() * 4 | 0), 0);
       coinLineDone = true;
@@ -4197,13 +4096,6 @@ function toast(msg, bad) {
   const t = $('toast'); t.textContent = msg; t.classList.toggle('bad', !!bad); t.classList.add('show');
   toastTimer = 1.4;
 }
-const powerRows = {};
-for (const k in POWERS) {
-  const row = document.createElement('div'); row.className = 'power'; row.hidden = true;
-  row.innerHTML = `<span>${POWERS[k].name}</span><span class="bar"><span class="fill" style="background:${POWERS[k].color}"></span></span>`;
-  $('powers').appendChild(row);
-  powerRows[k] = { row, fill: row.querySelector('.fill') };
-}
 function refreshMenu() {
   $('mBest').textContent = PROG.best.toLocaleString();
   $('mBank').textContent = PROG.bank.toLocaleString();
@@ -4212,10 +4104,9 @@ function refreshMenu() {
   $('mSpent').textContent = PROG.spent.toLocaleString();
   $('mBoss').textContent = PROG.beaten + ' / ' + PROG.fought;
   const c = fitById(PROG.fit), line = $('equipLine');
-  const on = POWER_LIST.length - PROG.off.length;
   line.textContent = '';
   const nm = document.createElement('b'); nm.textContent = 'Guitar Legend';
-  line.append('Running as ', nm, ' in the ', c.name, ' \u00b7 ' + on + ' of ' + POWER_LIST.length + ' powers on');
+  line.append('Running as ', nm, ' in the ', c.name);
   // which boss you'll meet at 1,200 m next run
   const nb = BOSS_INFO[savedNextBoss()], bi = $('bossInfo');
   bi.textContent = '';
@@ -4230,9 +4121,7 @@ function resetRun() {
   clearWorld();
   Object.assign(p, { soloT: -1, lane: 1, fromLane: 1, x: 0, y: 0, vy: 0, d: 0, grounded: true, rollT: 0, rollQueued: false, stumbleT: 0, slowT: 0, invulnT: 0, dieT: 0, roofT: 99, floorY: 0 });
   st.score = 0; st.coins = 0; st.dist = 0; st.speed = speedRamp ? 18 : STEADY_SPEED; st.shakeT = 0;
-  for (const k in st.power) st.power[k] = 0;
-  st.powerMax = {}; st.lifeUsed = false;
-  st.nextRowD = 70; st.nextPowerD = 160; st.busyEnd = [0, 0, 0]; st.trainEnd = [0, 0, 0];
+  st.nextRowD = 70; st.busyEnd = [0, 0, 0]; st.trainEnd = [0, 0, 0];
   st.milestone = 500; st.combo = 0;
   st.nextDragonD = 250; st.nextSlapD = 350; st.nextBossD = BOSS_FIRST;
   st.bossNext = savedNextBoss(); st.bossCount = 0;
@@ -4270,19 +4159,11 @@ function toMenu() {
   resetRun();
   st.mode = 'menu';
   show('paused', false); show('over', false); show('hud', false); show('menu', true); applyMusic();
-  for (const k in powerRows) powerRows[k].row.hidden = true;
   refreshMenu();
   $('startBtn').focus();
 }
 function crash(reason) {
   if (st.mode !== 'run' || p.soloT >= 0 || DEBUG.stage) return;   // nothing touches him mid-solo or on the debug stage
-  if (perk('bones') && !st.lifeUsed) {
-    st.lifeUsed = true;
-    p.invulnT = 2.5; p.stumbleT = 0; p.slowT = 0; p.vy = Math.max(p.vy, 0);
-    st.shakeT = 0.4; sfx.power(); toast('Back from the dead!');
-    $('vig').classList.remove('on');
-    return;
-  }
   st.mode = 'dying'; p.dieT = 0; st.reason = reason;
   // fall to whatever is under you, not onto the roof of the train you just hit
   p.floorY = Math.min(p.y, supportAt(p.x, p.d - 1.5));
@@ -4308,7 +4189,6 @@ function gameOver() {
   const obn = document.createElement('b'); obn.textContent = BOSS_INFO[savedNextBoss()].menu;
   ob.append('Next boss: ', obn);
   show('over', true); show('hud', false); $('warn').hidden = true;
-  for (const k in powerRows) powerRows[k].row.hidden = true;
   $('againBtn').focus();
 }
 function stumble(msg) {
@@ -4327,13 +4207,11 @@ function act(a) {
     const nl = Math.max(0, Math.min(2, p.lane + (a === 'left' ? -1 : 1)));
     if (nl !== p.lane) { p.fromLane = p.lane; p.lane = nl; sfx.lane(); }
   } else if (a === 'jump') {
-    if (st.power.jet > 0) return;
     if (p.grounded) {
-      p.vy = st.power.sneakers > 0 ? 15.8 : 11.6;
+      p.vy = 11.6;
       p.grounded = false; p.rollT = 0; sfx.jump();
     }
   } else if (a === 'roll') {
-    if (st.power.jet > 0) return;
     if (p.grounded) { p.rollT = 0.7; sfx.roll(); }
     else { p.vy = -26; p.rollQueued = true; }
   }
@@ -4406,7 +4284,7 @@ function debugEndStage() {
 // runs every frame of the practice stage: keeps the track empty and you safe, and replays the scene
 function stageTick(dt) {
   p.stumbleT = 0;   // crash() and stumble() do nothing on the stage, so you stay safe without the blinking
-  st.nextRowD = p.d + 400; st.nextPowerD = p.d + 1e6;
+  st.nextRowD = p.d + 400;
   st.nextDragonD = st.nextSlapD = st.nextBossD = p.d + 1e6;
   const d = DEBUG.cur;
   if (d && d.tick) d.tick();   // a scene can steer the fight every frame
@@ -4587,24 +4465,6 @@ function renderShop() {
     grid.appendChild(b);
     if (c.id === shopSel && shopOpen && document.activeElement && document.activeElement.classList.contains('item')) b.focus();
   }
-  // power switches
-  const pg = $('powGrid');
-  pg.textContent = '';
-  for (const pw of POWER_LIST) {
-    const on = perk(pw.id);
-    const lab = document.createElement('label'); lab.className = 'pow-row' + (on ? '' : ' off');
-    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = on;
-    const txt = document.createElement('span');
-    const nm = document.createElement('b'); nm.textContent = pw.name;
-    txt.append(nm, pw.desc);
-    if (pw.tame) { const w = document.createElement('i'); w.className = 'tame'; w.textContent = 'On = nothing can hit you'; txt.append(w); }
-    lab.append(cb, txt);
-    cb.addEventListener('change', () => {
-      PROG.off = POWER_LIST.filter(q => q.id === pw.id ? !cb.checked : !perk(q.id)).map(q => q.id);
-      saveProg(); renderShop();
-    });
-    pg.appendChild(lab);
-  }
   const c = fitById(shopSel), act = $('shopAct');
   if (c.id === PROG.fit) { act.textContent = 'Wearing this'; act.disabled = true; }
   else if (PROG.fits.includes(c.id)) { act.textContent = 'Wear it'; act.disabled = false; }
@@ -4636,7 +4496,7 @@ function renderProg() {
     ['Runs', PROG.runs.toLocaleString()], ['Coins earned', PROG.earned.toLocaleString()], ['Coins spent', PROG.spent.toLocaleString()],
     ['Bosses fought', PROG.fought.toLocaleString()], ['Bosses beaten', PROG.beaten.toLocaleString()],
     ['Scyrus', PROG.scyB + ' / ' + PROG.scyF], ['Molgrath', PROG.molB + ' / ' + PROG.molF], ['The Conductor', PROG.swB + ' / ' + PROG.swF],
-    ['Outfits', PROG.fits.length + ' / ' + OUTFITS.length], ['Powers on', (POWER_LIST.length - PROG.off.length) + ' / ' + POWER_LIST.length]
+    ['Outfits', PROG.fits.length + ' / ' + OUTFITS.length]
   ];
   const g = $('progStats'); g.textContent = '';
   for (const [k, v] of rows) {
@@ -4709,8 +4569,8 @@ $('progWipe').addEventListener('click', () => {
 // ---------- update ----------
 function collectCoin(c) {
   scene.remove(c.mesh); c.taken = true;
-  st.coins += perk('gold') ? 3 : 1; st.combo++; st.comboT = 0.6;
-  st.score += 10 * scoreX();
+  st.coins += 1; st.combo++; st.comboT = 0.6;
+  st.score += 10;
   sfx.coin();
 }
 
@@ -4752,7 +4612,7 @@ function updateDragon(dr, dt, live) {
   const prevRel = dr.d - p.d;
   dr.d -= DRAGON_V * dt;
   const rel = dr.d - p.d;
-  const lockRel = (st.speed + DRAGON_V) * (perk('ninja') ? 1.85 : 1.15);   // seconds of warning once it locks
+  const lockRel = (st.speed + DRAGON_V) * 1.15;   // seconds of warning once it locks
   if (!dr.locked && !dr.passed) {
     dr.lane = p.lane;
     if (live && rel < lockRel) {
@@ -4775,7 +4635,7 @@ function updateDragon(dr, dt, live) {
 
   if (live && st.mode === 'run' && dr.locked && !dr.passed && !dr.hit) {
     if (rel <= 2.2 && prevRel >= -2.2) {
-      const safe = p.invulnT > 0 || st.power.jet > 0 || perk('hell');
+      const safe = p.invulnT > 0;
       const top = p.y + (p.rollT > 0 ? 0.85 : 1.8);
       if (!safe && Math.abs(p.x - dr.x) < 1.35 && p.y < dr.y + 0.9 && top > dr.y - 0.8) {
         dr.hit = true;
@@ -4785,7 +4645,7 @@ function updateDragon(dr, dt, live) {
     if (rel < -2.2 && !dr.hit) {
       dr.passed = true;
       if (Math.abs(p.x - dr.x) < 3.3) {
-        const bonus = 250 * scoreX();
+        const bonus = 250;
         st.score += bonus;
         toast('Dodged! +' + bonus);
       }
@@ -4825,15 +4685,11 @@ function update(dt) {
   p.d += s * dt;
   st.dist = p.d;
 
-  const mult = Math.min(10, 1 + Math.floor(st.dist / 500)) * scoreX();
+  const mult = Math.min(10, 1 + Math.floor(st.dist / 500));
   st.score += s * dt * mult * 0.6;
   if (st.dist >= st.milestone) { toast(`${st.milestone.toLocaleString()} m! Speeding up`); st.milestone += 500; }
 
   // timers
-  for (const k in st.power) if (st.power[k] > 0) {
-    st.power[k] -= dt;
-    if (st.power[k] <= 0) { st.power[k] = 0; if (k === 'jet') { p.invulnT = 2; p.vy = 0; } }
-  }
   if (p.stumbleT > 0) { p.stumbleT -= dt; if (p.stumbleT <= 0) $('vig').classList.remove('on'); }
   if (p.invulnT > 0) p.invulnT -= dt;
   if (p.rollT > 0) p.rollT -= dt;
@@ -4846,16 +4702,16 @@ function update(dt) {
   for (const t of trains) if (t.v) { t.d0 -= t.v * dt; t.d1 -= t.v * dt; t.mesh.position.z = -t.d0; }
 
   // vertical
-  const safe = p.invulnT > 0 || st.power.jet > 0;
-  if (st.power.jet > 0) {
-    p.y += (7.5 - p.y) * Math.min(1, dt * 3);
-    p.vy = 0; p.grounded = false; p.rollT = 0;
-  } else {
+  const safe = p.invulnT > 0;
+  {
+    const prevY = p.y;   // height before this frame's fall
     p.vy -= G * dt * (p.vy < 0 ? 1.3 : 1);
     p.y += p.vy * dt;
     const sup = supportAt(p.x, p.d);
     if (p.y < sup) {
-      if (p.y < sup - 0.5 && !safe) {
+      // falling onto something from above is a landing, however far one frame carried you into it.
+      // only if you were ALREADY below its top last frame did you run into its side.
+      if (p.y < sup - 0.5 && prevY < sup - 0.5 && !safe) {
         const supOld = supportAt(prevX, p.d);
         if (p.y >= supOld - 0.5 && prevX !== p.x) {
           p.lane = p.fromLane; p.x = prevX;
@@ -4888,11 +4744,6 @@ function update(dt) {
     if (b.hit || safe) continue;
     if (Math.abs(p.x - b.x) > 1.35) continue;
     if (p.d + 0.35 >= b.d && prevD - 0.35 <= b.d + 0.2) {
-      if (perk('knight')) {
-        const low = b.type === 'low' ? p.y < 0.95 : (p.y + (p.rollT > 0 ? 0.85 : 1.8) > 1.45 && p.y < 2.6);
-        if (low) { b.hit = true; b.fly = 1.2; b.vy = 9; st.shakeT = 0.15; sfx.bump(); }
-        continue;
-      }
       if (b.type === 'low') {
         if (p.y < 0.95) { b.hit = true; b.fly = 1.2; b.vy = 7; stumble('You tripped over a barrier.'); if (st.mode !== 'run') return; }
       } else {
@@ -4903,11 +4754,11 @@ function update(dt) {
   }
 
   // dragon
-  if (p.d > st.nextDragonD && st.power.jet <= 0) launchWave();
+  if (p.d > st.nextDragonD) launchWave();
   updateDragons(dt, true);
   if (st.mode !== 'run') return;
   // demon slap: waits until no dragon is close
-  if (!SL.active && !BOSS.active && p.d > st.nextSlapD && st.power.jet <= 0 && !dragons.some(d => d.active && !d.passed)) startSlap();
+  if (!SL.active && !BOSS.active && p.d > st.nextSlapD && !dragons.some(d => d.active && !d.passed)) startSlap();
   updateSlap(dt, true);
   if (st.mode !== 'run') return;
   // boss fight: waits until the sky is clear of dragons and the demon's hand
@@ -4916,38 +4767,11 @@ function update(dt) {
   if (st.mode !== 'run') return;
 
   // coins
-  const magnet = hasMagnet();
   for (const c of coins) {
     if (c.taken) continue;
     const dd = c.d - p.d;
-    if (magnet && dd < 16 && dd > -1) {
-      const k = Math.min(1, dt * 9);
-      c.x += (p.x - c.x) * k; c.y += (p.y + 1 - c.y) * k; c.d += (p.d - c.d) * k * 0.9;
-      c.mesh.position.set(c.x, c.y, -c.d);
-    }
     if (c.d > prevD - 1.1 && c.d < p.d + 1.1 && Math.abs(c.x - p.x) < 1.0 && c.y > p.y - 0.4 && c.y < p.y + 2.3) collectCoin(c);
   }
-  // pickups
-  for (const u of pickups) {
-    if (u.taken) continue;
-    if (u.d > prevD - 1.3 && u.d < p.d + 1.3 && Math.abs(u.x - p.x) < 1.1 && u.y > p.y - 0.6 && u.y < p.y + 2.5) {
-      u.taken = true; scene.remove(u.mesh);
-      st.power[u.type] = st.powerMax[u.type] = POWERS[u.type].dur * (perk('blaze') ? 2 : 1);
-      if (u.type === 'jet') { st.jetCoinD = p.d + 30; st.jetLane = p.lane; }
-      sfx.power(); toast(POWERS[u.type].name + '!');
-    }
-  }
-
-  // jetpack coin trail
-  if (st.power.jet > 0.6) {
-    const jetEnd = p.d + (st.power.jet - 0.6) * s;
-    while (st.jetCoinD < Math.min(p.d + 110, jetEnd)) {
-      if (Math.random() < 0.08) st.jetLane = Math.max(0, Math.min(2, st.jetLane + (Math.random() < 0.5 ? -1 : 1)));
-      addCoin(LANES[st.jetLane], st.jetCoinD, 8.4);
-      st.jetCoinD += 2.4;
-    }
-  }
-
   // spawn rows
   if (BOSS.active) st.nextRowD = Math.max(st.nextRowD, p.d + 165);   // no obstacles during a boss fight
   while (st.nextRowD < p.d + 165) {
@@ -4961,7 +4785,6 @@ function update(dt) {
   trains = trains.filter(t => { if (t.d1 < cut) { scene.remove(t.mesh); return false; } return true; });
   barriers = barriers.filter(b => { if (b.d < cut) { scene.remove(b.mesh); return false; } return true; });
   coins = coins.filter(c => { if (c.taken) return false; if (c.d < cut) { scene.remove(c.mesh); return false; } return true; });
-  pickups = pickups.filter(u => { if (u.taken) return false; if (u.d < cut) { scene.remove(u.mesh); return false; } return true; });
 
   // HUD
   const warn = $('warn');
@@ -4989,13 +4812,6 @@ function update(dt) {
   $('dist').textContent = Math.floor(st.dist).toLocaleString() + ' m';
   const kmh = Math.round(st.speed * 3.6) + ' km/h';
   if ($('spd').textContent !== kmh) $('spd').textContent = kmh;
-  const pt = perk('bones') ? (st.lifeUsed ? 'Extra life used' : '1 extra life') : '';
-  if ($('perkChip').textContent !== pt) { $('perkChip').textContent = pt; $('perkChip').hidden = !pt; }
-  for (const k in powerRows) {
-    const on = st.power[k] > 0;
-    if (powerRows[k].row.hidden === on) powerRows[k].row.hidden = !on;
-    if (on) powerRows[k].fill.style.width = (100 * st.power[k] / (st.powerMax[k] || POWERS[k].dur)).toFixed(1) + '%';
-  }
 }
 
 // ---------- animation & camera ----------
@@ -5004,7 +4820,7 @@ function animate(dt, t) {
   musFrame(dt);
   const pm = player;
   pm.root.position.set(p.x, p.y, -p.d);
-  const air = !p.grounded && st.power.jet <= 0;
+  const air = !p.grounded;
   const rolling = p.rollT > 0;
   const solo = p.soloT >= 0 && st.mode === 'run';
   if (st.mode === 'run' || st.mode === 'menu') p.phase += dt * (st.mode === 'run' ? st.speed * 0.75 : 4);
@@ -5013,8 +4829,6 @@ function animate(dt, t) {
   let gA = 0;                                   // 0 = guitar on his back, 1 = in playing position
   if (st.mode === 'dying') {
     pm.legL.rotation.x = 0.4; pm.legR.rotation.x = -0.3; pm.armL.rotation.x = -2.6; pm.armR.rotation.x = -2.4;
-  } else if (st.power.jet > 0 && !solo) {
-    pm.legL.rotation.x = 0.25 + sw * 0.1; pm.legR.rotation.x = 0.15 - sw * 0.1; pm.armL.rotation.x = -0.4; pm.armR.rotation.x = -0.4;
   } else if (air && !solo) {
     pm.legL.rotation.x = -0.9; pm.legR.rotation.x = 0.5; pm.armL.rotation.x = -2.2; pm.armR.rotation.x = -1.6;
   } else if (st.mode === 'menu') {
@@ -5061,8 +4875,6 @@ function animate(dt, t) {
   if (st.mode !== 'dying') pm.model.rotation.x = rolling ? -0.35 : (st.mode === 'run' ? -0.12 : 0);
   pm.model.position.y = (st.mode === 'run' && !air && !rolling) ? Math.abs(Math.cos(p.phase)) * 0.08 : 0;
   pm.model.rotation.z = (LANES[p.lane] - p.x) * -0.12;
-  pm.jet.visible = st.power.jet > 0;
-  pm.flames.forEach(f => f.scale.set(1, 0.7 + Math.random() * 0.6, 1));
   pm.model.visible = !(p.invulnT > 0 && Math.floor(t * 12) % 2 === 0);
 
   const sup = supportAt(p.x, p.d);
@@ -5120,7 +4932,6 @@ function animate(dt, t) {
   HELL_FLOOR.glow.offset.copy(trackTex.offset);
   // world spin
   for (const c of coins) c.mesh.rotation.y = t * 3 + c.d * 0.3;
-  for (const u of pickups) { u.mesh.rotation.y = t * 2; u.mesh.position.y = u.y + Math.sin(t * 3 + u.d) * 0.15; }
 
   // ground follows player
   const c = p.d + PLANE_L / 2 - 40;
