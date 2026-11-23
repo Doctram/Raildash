@@ -49,12 +49,6 @@ body{
 }
 .chip.dist{background:var(--paper)}
 .hud-right{display:flex;gap:8px;align-items:center}
-.coins{
-  display:flex;align-items:center;gap:8px;font-family:var(--display);font-size:20px;
-  background:var(--paper);border:3px solid var(--ink);border-radius:999px;padding:4px 14px 3px 6px;
-  box-shadow:3px 3px 0 var(--ink);font-variant-numeric:tabular-nums;
-}
-.coin-ic{width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff3b0,var(--sun) 55%,#d99a00);border:2px solid var(--ink)}
 .icon-btn{
   pointer-events:auto;width:42px;height:42px;border-radius:12px;border:3px solid var(--ink);
   background:var(--paper);box-shadow:3px 3px 0 var(--ink);font-family:var(--display);font-size:15px;color:var(--ink);cursor:pointer;
@@ -181,10 +175,8 @@ button:focus-visible{outline:4px solid var(--violet);outline-offset:3px}
 .item b{font-weight:800;font-size:14px;line-height:1.15}
 .item small{display:flex;align-items:center;gap:5px;font-weight:800;font-size:12px;font-variant-numeric:tabular-nums;opacity:.8}
 .item.sel{background:#fff3c4;outline:3px solid var(--violet);outline-offset:1px}
-.item.locked small{color:#a33}
 .sw{display:flex;gap:3px}
 .sw i{width:16px;height:16px;border-radius:50%;border:2px solid var(--ink);display:block}
-.coin-ic.sm{width:14px;height:14px;border-width:1.5px}
 .btn:disabled{filter:grayscale(.7);opacity:.7;cursor:not-allowed}
 .row .btn{flex:1}
 @media (max-width:420px){.card{padding:20px 18px}}
@@ -200,7 +192,6 @@ button:focus-visible{outline:4px solid var(--violet);outline-offset:3px}
     <div class="chips"><span class="chip" id="mult">x1</span><span class="chip dist" id="dist">0 m</span><span class="chip dist" id="spd">65 km/h</span></div>
   </div>
   <div class="hud-right">
-    <div class="coins"><span class="coin-ic"></span><span id="coins">0</span></div>
     <button class="icon-btn" id="pauseBtn" aria-label="Pause">II</button>
   </div>
 </div>
@@ -212,7 +203,7 @@ button:focus-visible{outline:4px solid var(--violet);outline-offset:3px}
 <div class="overlay" id="menu">
   <div class="card">
     <h1 class="logo">Rail<span>Dash</span></h1>
-    <p class="tag">Sprint down the burning tracks, jump the barriers, roll under the signs and grab every coin. Trip twice and you're done.</p>
+    <p class="tag">Sprint down the burning tracks, jump the barriers, roll under the signs and dodge everything in your way. Trip twice and you're done.</p>
     <p class="tag" style="margin-top:-6px"><b>The world is burning.</b> A demon looms in the sky. When the road under you turns red, a dragon is coming: switch lanes! When the demon flies in close, watch its hand: switch lanes before it smashes down!</p>
     <p class="tag" style="margin-top:-6px" id="bossInfo"></p>
     <div class="keys">
@@ -223,12 +214,10 @@ button:focus-visible{outline:4px solid var(--violet);outline-offset:3px}
     </div>
     <p class="hint">On a phone or tablet, swipe left, right, up and down.</p>
     <p class="equip-line" id="equipLine"></p>
-    <div class="stats">
+    <div class="stats" style="grid-template-columns:repeat(2,1fr)">
       <div class="stat"><b id="mBest">0</b><small>Best</small></div>
-      <div class="stat"><b id="mBank">0</b><small>Coins banked</small></div>
       <div class="stat"><b id="mRuns">0</b><small>Runs</small></div>
       <div class="stat sm"><b id="mKm">0.00 km</b><small>Distance run</small></div>
-      <div class="stat sm"><b id="mSpent">0</b><small>Coins spent</small></div>
       <div class="stat sm"><b id="mBoss">0 / 0</b><small>Bosses beaten</small></div>
     </div>
     <p class="warn-box" id="storeWarn" hidden>This browser isn't letting the game save on its own. Open <b>Progress</b> below and keep a copy of your code, then paste it back whenever you return.</p>
@@ -268,9 +257,8 @@ button:focus-visible{outline:4px solid var(--violet);outline-offset:3px}
     <h2 class="over-title">Busted!</h2>
     <p class="reason" id="reason">You got caught.</p>
     <span class="newbest" id="newBest" hidden>New best!</span>
-    <div class="stats">
+    <div class="stats" style="grid-template-columns:repeat(2,1fr)">
       <div class="stat"><b id="oScore">0</b><small>Score</small></div>
-      <div class="stat"><b id="oCoins">0</b><small>Coins</small></div>
       <div class="stat"><b id="oBest">0</b><small>Best</small></div>
     </div>
     <div class="row">
@@ -286,9 +274,8 @@ button:focus-visible{outline:4px solid var(--violet);outline-offset:3px}
   <div class="card shop-card" role="dialog" aria-label="Guitar Legend wardrobe">
     <div class="shop-head">
       <h2 class="shop-title">Wardrobe</h2>
-      <div class="coins"><span class="coin-ic"></span><span id="shopCoins">0</span></div>
     </div>
-    <p class="hint" style="margin:0 0 4px">The outfits are pure stage style &mdash; they all play the same.</p>
+    <p class="hint" style="margin:0 0 4px">Every outfit is free. They are pure stage style &mdash; they all play the same.</p>
     <div style="overflow:auto;min-height:0;padding-right:2px">
       <div class="shop-grid" id="shopGrid" style="overflow:visible"></div>
     </div>
@@ -303,7 +290,6 @@ button:focus-visible{outline:4px solid var(--violet);outline-offset:3px}
   <div class="card shop-card" role="dialog" aria-label="Progress and save code">
     <div class="shop-head">
       <h2 class="shop-title">Your progress</h2>
-      <div class="coins"><span class="coin-ic"></span><span id="progCoins">0</span></div>
     </div>
     <div style="overflow:auto;min-height:0;display:flex;flex-direction:column;gap:12px;padding:2px 6px 6px 2px">
       <p class="warn-box" id="progWarn" hidden>This browser isn't saving on its own, so the game can't remember you between visits. Copy the code below and keep it somewhere safe.</p>
@@ -355,14 +341,13 @@ const storageOK = (() => {
 // every earned thing lives in ONE object, written whole on every change, so nothing
 // can half-save. it also exports as a text code, so a wiped browser isn't a wiped game.
 const SAVE_KEY = 'rd-save2';
-const OLD_PRICES = { runner: 0, blaze: 300, ninja: 600, bones: 1000, robo: 1500, knight: 2500, hell: 4000, legend: 5000, gold: 7500 };
 const freshProg = () => ({
   v: 3,
   best: 0, bestKm: 0, km: 0,                      // score + distance
-  bank: 0, earned: 0, spent: 0, runs: 0,          // coins
+  runs: 0,
   fought: 0, beaten: 0,                           // bosses, all kinds
   scyF: 0, scyB: 0, molF: 0, molB: 0, swF: 0, swB: 0,   // bosses, per kind (fought / beaten)
-  fits: ['fringe'], fit: 'fringe',                // outfits unlocked / worn
+  fit: 'fringe',                                  // the outfit you wear (they are all free)
   next: 'molgrath'
 });
 let PROG = freshProg();
@@ -372,38 +357,30 @@ function cleanProg(o) {
   const was = Number(o.v) || 0;
   const f = freshProg();
   for (const k in f) if (typeof o[k] === typeof f[k] && o[k] !== null) f[k] = o[k];
-  f.fits = (Array.isArray(f.fits) ? f.fits : []).filter(id => OUTFITS.some(x => x.id === id));
-  if (!f.fits.includes('fringe')) f.fits.unshift('fringe');
-  if (!f.fits.includes(f.fit)) f.fit = f.fits[0];
+  if (!OUTFITS.some(x => x.id === f.fit)) f.fit = 'fringe';
   f.v = 3;
   f.next = ['scyrus', 'molgrath', 'switchman'].includes(f.next) ? f.next : 'molgrath';
-  for (const k of ['best', 'bestKm', 'km', 'bank', 'earned', 'spent', 'runs', 'fought', 'beaten', 'scyF', 'scyB', 'molF', 'molB', 'swF', 'swB'])
+  for (const k of ['best', 'bestKm', 'km', 'runs', 'fought', 'beaten', 'scyF', 'scyB', 'molF', 'molB', 'swF', 'swB'])
     f[k] = Math.max(0, Number(f[k]) || 0);
   return f;
 }
 function saveProg() { store.set(SAVE_KEY, PROG); }
 // an untouched save must not shadow an old one worth carrying over: the game may have been
 // opened once (writing a blank save) before the player got back to the build they had progress in
-const pristine = o => o && !o.runs && !o.bank && !o.earned && !o.best && (!Array.isArray(o.fits) || o.fits.length <= 1);
+const pristine = o => o && !o.runs && !o.best;
 function loadProg() {
   const raw = store.get(SAVE_KEY, null);
   const done = store.get('rd-migrated', false);
   if (raw && typeof raw === 'object' && (done || !pristine(raw))) { PROG = cleanProg(raw); return; }
   // nothing worth keeping in the new slot — carry over a save from the old nine-character build.
-  // those characters are gone, so every coin spent on them comes back.
   const owned = store.get('rd-owned', null), bank = store.get('rd-bank', null);
   if (!Array.isArray(owned) && bank == null) return;
-  PROG.bank = (Number(bank) || 0);
   PROG.best = Number(store.get('rd-best', 0)) || 0;
   PROG.runs = Number(store.get('rd-runs', 0)) || 0;
   PROG.next = store.get('rd-boss-next', 'molgrath') === 'scyrus' ? 'scyrus' : 'molgrath';
-  let refund = 0, had = 0;
-  (Array.isArray(owned) ? owned : []).forEach(id => { if (OLD_PRICES[id]) { refund += OLD_PRICES[id]; had++; } });
-  PROG.bank += refund;
-  // anyone who had bought the old Guitar Legend keeps a stage outfit on the house
-  if (Array.isArray(owned) && (owned.includes('legend') || owned.includes('gold'))) PROG.fits.push('silk');
+  const had = (Array.isArray(owned) ? owned : []).filter(id => id !== 'runner').length;
   if (had) saveNote = 'Welcome back — your ' + had + ' old character' + (had > 1 ? 's are' : ' is') +
-    ' now one Guitar Legend, and the ' + refund.toLocaleString() + ' coins you spent on them are back in the bank.';
+    ' now one Guitar Legend.';
   store.set('rd-migrated', true);      // only ever carry the old save over once
   saveProg();
 }
@@ -711,10 +688,6 @@ const lowBoardMat = new THREE.MeshLambertMaterial({ map: redWhiteTex });
 const highBoardGeo = new THREE.BoxGeometry(2.3, 1.15, 0.2);
 const highBoardMat = new THREE.MeshLambertMaterial({ map: stripeTex });
 
-// coins
-const coinGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.12, 20);
-coinGeo.rotateX(Math.PI / 2);
-const coinMat = new THREE.MeshLambertMaterial({ color: 0xffc93c, emissive: 0x6b4a00 });
 
 // blob shadow
 const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.55, 24), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28, depthWrite: false }));
@@ -725,19 +698,19 @@ scene.add(shadow);
 // one runner, the Guitar Legend.
 // the outfits are cosmetic: late-'60s stage wear, one per era.
 const OUTFITS = [
-  { id: 'fringe', name: 'White Fringe', era: 'Festival field', price: 0,
+  { id: 'fringe', name: 'White Fringe', era: 'Festival field',
     top: 0xf0e7d2, pants: 0x3457b2, skin: 0x6b4226, shoe: 0xd8cba8, hat: 'band', hatColor: 0xd62828,
     face: 'eyes', fringe: 0xf0e7d2, bead: 0x2ec4b6, gtr: 0xf5f0e6, neck: 0x8b5a2b },
-  { id: 'silk', name: 'Peach Silk', era: 'Smoky club', price: 1200,
+  { id: 'silk', name: 'Peach Silk', era: 'Smoky club',
     top: 0xe8826b, pants: 0x4a3b2a, skin: 0x6b4226, shoe: 0x2b2118, hat: 'band', hatColor: 0xc9a227,
     face: 'eyes', pattern: 0xf2c14e, sash: 0x7b2f6b, gtr: 0xf5f0e6, neck: 0x8b5a2b },
-  { id: 'teal', name: 'Turquoise Kimono', era: 'Open-air stage', price: 2600,
+  { id: 'teal', name: 'Turquoise Kimono', era: 'Open-air stage',
     top: 0x16a3a0, pants: 0x18283a, skin: 0x6b4226, shoe: 0xe8e2d4, hat: 'band', hatColor: 0xc2185b,
     face: 'eyes', pattern: 0xffd166, strap: 0xe63946, gtr: 0xf5f0e6, neck: 0x8b5a2b },
-  { id: 'brim', name: 'Black Brim', era: 'Off stage, winter', price: 4200,
+  { id: 'brim', name: 'Black Brim', era: 'Off stage, winter',
     top: 0x241c33, pants: 0x15121c, skin: 0x6b4226, shoe: 0x15121c, hat: 'brim', hatColor: 0x15121c,
     face: 'eyes', pattern: 0xb33a3a, scarf: 0xd4a017, medal: 0x2ec4b6, gtr: 0x1c1c22, neck: 0x3b2a1c },
-  { id: 'scarlet', name: 'Scarlet Velvet', era: 'Red lights, late set', price: 6500,
+  { id: 'scarlet', name: 'Scarlet Velvet', era: 'Red lights, late set',
     top: 0xc1272d, pants: 0x8e1b20, skin: 0x6b4226, shoe: 0x2b2118, hat: 'band', hatColor: 0x2f6fb5,
     face: 'eyes', pattern: 0xe9a23b, sash: 0xe8e2d4, gtr: 0xffffff, neck: 0x8b5a2b, glow: 0x1a0205 }
 ];
@@ -2369,8 +2342,8 @@ function endBoss(won) {
   $('bossBar').hidden = true; $('bossCard').hidden = true;
   if (won) {
     PROG.beaten++; PROG[PROG_KEYS[BOSS.kind][1]]++; saveProg();
-    st.coins += 100; st.score += 2000;
-    toast(BOSS_INFO[BOSS.kind].name + ' DEFEATED! +100 coins');
+    st.score += 2000;
+    toast(BOSS_INFO[BOSS.kind].name + ' DEFEATED! +2,000 points');
     sfx.power();
     st.nextRowD = p.d + 70; st.nextDragonD = p.d + 320; st.nextSlapD = p.d + 520; st.nextBossD = p.d + BOSS_EVERY;
   }
@@ -3379,31 +3352,22 @@ function animateBoss(dt, t) {
 // ---------- game state ----------
 const p = { soloT: -1, lane: 1, fromLane: 1, x: 0, y: 0, vy: 0, d: 0, grounded: true, rollT: 0, rollQueued: false, phase: 0, stumbleT: 0, slowT: 0, invulnT: 0, dieT: 0, roofT: 99, floorY: 0 };
 const st = {
-  mode: 'menu', score: 0, coins: 0, speed: 16, dist: 0,
+  mode: 'menu', score: 0, speed: 16, dist: 0,
   shakeT: 0, nextRowD: 0, busyEnd: [0, 0, 0], trainEnd: [0, 0, 0],
-  milestone: 1000, combo: 0, comboT: 0, reason: ''
+  milestone: 1000, reason: ''
 };
-let trains = [], barriers = [], coins = [], buildings = [];
+let trains = [], barriers = [], buildings = [];
 const nextB = { '-1': -20, '1': -20 };
 
 function clearWorld() {
-  [...trains, ...barriers, ...coins].forEach(o => scene.remove(o.mesh));
-  trains = []; barriers = []; coins = [];
+  [...trains, ...barriers].forEach(o => scene.remove(o.mesh));
+  trains = []; barriers = [];
   buildings.forEach(b => { b.meshes.forEach(m => scene.remove(m)); b.fires.forEach(f => scene.remove(f.g)); });
   buildings = []; fires = [];
   nextB['-1'] = -20; nextB['1'] = -20;
 }
 
 // ---------- spawning ----------
-function addCoin(x, d, y) {
-  const m = new THREE.Mesh(coinGeo, coinMat);
-  m.position.set(x, y, -d);
-  scene.add(m);
-  coins.push({ x, d, y, mesh: m });
-}
-function addCoinLine(lane, d, n, base) {
-  for (let i = 0; i < n; i++) addCoin(LANES[lane], d + i * 2.4, base + 0.9);
-}
 function addTrain(lane, D, ramp, moving) {
   const n = 1 + Math.floor(Math.random() * (moving ? 2 : 3));
   const L = n * CAR_L + (n - 1) * CAR_GAP;
@@ -3431,9 +3395,6 @@ function addTrain(lane, D, ramp, moving) {
       const r = new THREE.Mesh(rampGeo, rampMat);
       r.position.set(0, 0, RAMP_L);
       g.add(r);
-      // coins up the ramp and along the roof
-      for (let i = 0; i < 3; i++) addCoin(LANES[lane], D + 1 + i * 2, TOP * (1 + i * 2) / RAMP_L + 0.9);
-      addCoinLine(lane, d0 + 1, Math.min(10, Math.floor(L / 2.4)), TOP);
     } else {
       st.busyEnd[lane] = d0 + L;
     }
@@ -3524,20 +3485,15 @@ function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = (Math.r
 function spawnRow(D) {
   const diff = Math.min(1, st.dist / 2200);
   const pLow = 0.24 + 0.12 * diff, pHigh = 0.18 + 0.12 * diff;
-  let coinLineDone = false, blockers = 0;
+  let blockers = 0;
   for (const l of shuffle([0, 1, 2])) {
     const r = Math.random();
     if (r < pLow && blockers < 2) {
       blockers++;
       addBarrier(l, D, 'low');
-      if (Math.random() < 0.5) for (let i = -2; i <= 2; i++) addCoin(LANES[l], D + i * 1.6, 0.9 + 1.25 * Math.cos(i * 0.6));
     } else if (r < pLow + pHigh && blockers < 2) {
       blockers++;
       addBarrier(l, D, 'high');
-      if (Math.random() < 0.4) for (let i = -2; i <= 2; i++) addCoin(LANES[l], D + i * 1.6, 0.6);
-    } else if (!coinLineDone && Math.random() < 0.7) {
-      addCoinLine(l, D, 6 + (Math.random() * 4 | 0), 0);
-      coinLineDone = true;
     }
   }
 }
@@ -3624,7 +3580,6 @@ function crunch(dur, freq, vol) {
   s.connect(f); f.connect(g); g.connect(ac.destination); s.start(t0); s.stop(t0 + dur + 0.05);
 }
 const sfx = {
-  coin() { const f = 880 + (st.combo % 10) * 70; beep(f, 0.07, 'square', 0.035); beep(f * 1.5, 0.08, 'square', 0.03, 0, 0.05); },
   jump() { beep(300, 0.18, 'triangle', 0.08, 500); },
   roll() { beep(220, 0.15, 'sawtooth', 0.04, -120); },
   lane() { beep(520, 0.05, 'triangle', 0.03); },
@@ -4098,10 +4053,8 @@ function toast(msg, bad) {
 }
 function refreshMenu() {
   $('mBest').textContent = PROG.best.toLocaleString();
-  $('mBank').textContent = PROG.bank.toLocaleString();
   $('mRuns').textContent = PROG.runs.toLocaleString();
   $('mKm').textContent = fmtKm(PROG.km);
-  $('mSpent').textContent = PROG.spent.toLocaleString();
   $('mBoss').textContent = PROG.beaten + ' / ' + PROG.fought;
   const c = fitById(PROG.fit), line = $('equipLine');
   line.textContent = '';
@@ -4120,16 +4073,15 @@ function show(id, on) { $(id).hidden = !on; }
 function resetRun() {
   clearWorld();
   Object.assign(p, { soloT: -1, lane: 1, fromLane: 1, x: 0, y: 0, vy: 0, d: 0, grounded: true, rollT: 0, rollQueued: false, stumbleT: 0, slowT: 0, invulnT: 0, dieT: 0, roofT: 99, floorY: 0 });
-  st.score = 0; st.coins = 0; st.dist = 0; st.speed = speedRamp ? 18 : STEADY_SPEED; st.shakeT = 0;
+  st.score = 0; st.dist = 0; st.speed = speedRamp ? 18 : STEADY_SPEED; st.shakeT = 0;
   st.nextRowD = 70; st.busyEnd = [0, 0, 0]; st.trainEnd = [0, 0, 0];
-  st.milestone = 500; st.combo = 0;
+  st.milestone = 500;
   st.nextDragonD = 250; st.nextSlapD = 350; st.nextBossD = BOSS_FIRST;
   st.bossNext = savedNextBoss(); st.bossCount = 0;
   endBoss(false); burstPool.forEach(b => { b.life = 0; b.s.visible = false; });
   hideSlap(); hideFx();
   dragons.forEach(hideDragon);
   $('warn').hidden = true;
-  addCoinLine(1, 18, 8, 0);
   player.model.rotation.set(0, 0, 0);
   player.model.scale.set(1, 1, 1);
   player.model.visible = true;
@@ -4178,11 +4130,9 @@ function gameOver() {
   const metres = Math.max(0, st.dist);
   PROG.km += metres;
   if (metres > PROG.bestKm) PROG.bestKm = metres;
-  PROG.bank += st.coins; PROG.earned += st.coins;
-  saveProg();                                   // the run is banked the moment it ends
+  saveProg();                                   // the run is saved the moment it ends
   $('reason').textContent = st.reason;
   $('oScore').textContent = score.toLocaleString();
-  $('oCoins').textContent = st.coins.toLocaleString();
   $('oBest').textContent = PROG.best.toLocaleString();
   $('newBest').hidden = !isBest;
   const ob = $('overBoss'); ob.textContent = '';
@@ -4443,21 +4393,17 @@ function closeShop() {
   refreshMenu(); $('shopBtn').focus();
 }
 function renderShop() {
-  $('shopCoins').textContent = PROG.bank.toLocaleString();
   const grid = $('shopGrid');
   grid.textContent = '';
   for (const c of OUTFITS) {
-    const has = PROG.fits.includes(c.id);
     const b = document.createElement('button');
-    b.className = 'item' + (c.id === shopSel ? ' sel' : '') + (!has && PROG.bank < c.price ? ' locked' : '');
+    b.className = 'item' + (c.id === shopSel ? ' sel' : '');
     b.setAttribute('aria-pressed', String(c.id === shopSel));
     const sw = document.createElement('span'); sw.className = 'sw';
     [c.top, c.pants, c.hatColor, c.pattern || c.fringe || c.skin].forEach(col => { const i = document.createElement('i'); i.style.background = hex(col); sw.appendChild(i); });
     const name = document.createElement('b'); name.textContent = c.name;
     const tag = document.createElement('small');
-    if (c.id === PROG.fit) tag.textContent = 'Wearing';
-    else if (has) tag.textContent = 'Unlocked';
-    else { const ci = document.createElement('span'); ci.className = 'coin-ic sm'; tag.append(ci, c.price.toLocaleString()); }
+    tag.textContent = c.id === PROG.fit ? 'Wearing' : 'Free';
     const pw = document.createElement('span'); pw.className = 'pw';
     pw.textContent = c.era;
     b.append(sw, name, pw, tag);
@@ -4467,20 +4413,12 @@ function renderShop() {
   }
   const c = fitById(shopSel), act = $('shopAct');
   if (c.id === PROG.fit) { act.textContent = 'Wearing this'; act.disabled = true; }
-  else if (PROG.fits.includes(c.id)) { act.textContent = 'Wear it'; act.disabled = false; }
-  else if (PROG.bank >= c.price) { act.textContent = 'Buy for ' + c.price.toLocaleString(); act.disabled = false; }
-  else { act.textContent = 'Need ' + (c.price - PROG.bank).toLocaleString() + ' more'; act.disabled = true; }
+  else { act.textContent = 'Wear it'; act.disabled = false; }
 }
 $('shopAct').addEventListener('click', () => {
   const c = fitById(shopSel);
-  if (!PROG.fits.includes(c.id)) {
-    if (PROG.bank < c.price) return;
-    PROG.bank -= c.price; PROG.spent += c.price;
-    PROG.fits.push(c.id);
-    sfx.power(); toast('Unlocked ' + c.name + '!');
-  }
   PROG.fit = c.id;
-  saveProg();                       // a purchase is written the instant it happens
+  saveProg();                       // your outfit choice is saved the instant you pick it
   renderShop();
 });
 $('shopBtn').addEventListener('click', openShop);
@@ -4489,14 +4427,12 @@ $('shopBack').addEventListener('click', closeShop);
 
 // ---------- progress panel ----------
 function renderProg() {
-  $('progCoins').textContent = PROG.bank.toLocaleString();
   $('progWarn').hidden = storageOK;
   const rows = [
     ['Distance run', fmtKm(PROG.km)], ['Longest run', fmtKm(PROG.bestKm)], ['Best score', PROG.best.toLocaleString()],
-    ['Runs', PROG.runs.toLocaleString()], ['Coins earned', PROG.earned.toLocaleString()], ['Coins spent', PROG.spent.toLocaleString()],
+    ['Runs', PROG.runs.toLocaleString()],
     ['Bosses fought', PROG.fought.toLocaleString()], ['Bosses beaten', PROG.beaten.toLocaleString()],
-    ['Scyrus', PROG.scyB + ' / ' + PROG.scyF], ['Molgrath', PROG.molB + ' / ' + PROG.molF], ['The Conductor', PROG.swB + ' / ' + PROG.swF],
-    ['Outfits', PROG.fits.length + ' / ' + OUTFITS.length]
+    ['Scyrus', PROG.scyB + ' / ' + PROG.scyF], ['Molgrath', PROG.molB + ' / ' + PROG.molF], ['The Conductor', PROG.swB + ' / ' + PROG.swF]
   ];
   const g = $('progStats'); g.textContent = '';
   for (const [k, v] of rows) {
@@ -4549,13 +4485,13 @@ $('progPaste').addEventListener('click', () => {
   buildCharacter(fitById(PROG.fit)); shopSel = PROG.fit;
   renderProg(); applyMusic();
   sfx.power();
-  $('progMsg').textContent = 'Loaded. ' + fmtKm(PROG.km) + ' run, ' + PROG.bank.toLocaleString() + ' coins, ' + PROG.fits.length + ' outfit' + (PROG.fits.length === 1 ? '' : 's') + '.';
+  $('progMsg').textContent = 'Loaded. ' + fmtKm(PROG.km) + ' run, best score ' + PROG.best.toLocaleString() + '.';
 });
 let wipeArmed = false;
 $('progWipe').addEventListener('click', () => {
   if (!wipeArmed) {
     wipeArmed = true; $('progWipe').textContent = 'Really start over?';
-    $('progMsg').textContent = 'This clears every coin, outfit and record. Press again to confirm, or copy your code first.';
+    $('progMsg').textContent = 'This clears every record and your outfit choice. Press again to confirm, or copy your code first.';
     setTimeout(() => { wipeArmed = false; $('progWipe').textContent = 'Start over'; }, 6000);
     return;
   }
@@ -4567,12 +4503,6 @@ $('progWipe').addEventListener('click', () => {
 });
 
 // ---------- update ----------
-function collectCoin(c) {
-  scene.remove(c.mesh); c.taken = true;
-  st.coins += 1; st.combo++; st.comboT = 0.6;
-  st.score += 10;
-  sfx.coin();
-}
 
 // ---------- dragon logic ----------
 function spawnDragon(offset) {
@@ -4693,7 +4623,6 @@ function update(dt) {
   if (p.stumbleT > 0) { p.stumbleT -= dt; if (p.stumbleT <= 0) $('vig').classList.remove('on'); }
   if (p.invulnT > 0) p.invulnT -= dt;
   if (p.rollT > 0) p.rollT -= dt;
-  if (st.comboT > 0) { st.comboT -= dt; if (st.comboT <= 0) st.combo = 0; }
 
   // lateral
   p.x += (LANES[p.lane] - p.x) * Math.min(1, dt * 15);
@@ -4766,12 +4695,6 @@ function update(dt) {
   updateBoss(dt, true);
   if (st.mode !== 'run') return;
 
-  // coins
-  for (const c of coins) {
-    if (c.taken) continue;
-    const dd = c.d - p.d;
-    if (c.d > prevD - 1.1 && c.d < p.d + 1.1 && Math.abs(c.x - p.x) < 1.0 && c.y > p.y - 0.4 && c.y < p.y + 2.3) collectCoin(c);
-  }
   // spawn rows
   if (BOSS.active) st.nextRowD = Math.max(st.nextRowD, p.d + 165);   // no obstacles during a boss fight
   while (st.nextRowD < p.d + 165) {
@@ -4784,7 +4707,6 @@ function update(dt) {
   const cut = p.d - 15;
   trains = trains.filter(t => { if (t.d1 < cut) { scene.remove(t.mesh); return false; } return true; });
   barriers = barriers.filter(b => { if (b.d < cut) { scene.remove(b.mesh); return false; } return true; });
-  coins = coins.filter(c => { if (c.taken) return false; if (c.d < cut) { scene.remove(c.mesh); return false; } return true; });
 
   // HUD
   const warn = $('warn');
@@ -4807,7 +4729,6 @@ function update(dt) {
     warn.classList.toggle('lock', bw ? bossWarnHot() : locked.length > 0 || (slapWarn && (SL.phase === 'lock' || SL.phase === 'smash' || SL.cued)));
   }
   $('score').textContent = Math.floor(st.score).toLocaleString();
-  $('coins').textContent = st.coins.toLocaleString();
   $('mult').textContent = 'x' + mult;
   $('dist').textContent = Math.floor(st.dist).toLocaleString() + ' m';
   const kmh = Math.round(st.speed * 3.6) + ' km/h';
@@ -4931,7 +4852,6 @@ function animate(dt, t) {
   animateDrips(t);
   HELL_FLOOR.glow.offset.copy(trackTex.offset);
   // world spin
-  for (const c of coins) c.mesh.rotation.y = t * 3 + c.d * 0.3;
 
   // ground follows player
   const c = p.d + PLANE_L / 2 - 40;
@@ -4983,7 +4903,7 @@ function frame(now) {
 }
 $('storeWarn').hidden = storageOK;
 if (saveNote) setTimeout(() => toast(saveNote), 600);
-// a run in progress isn't banked, but everything already earned is written on the way out
+// a run in progress isn't saved, but everything already earned is written on the way out
 window.addEventListener('pagehide', saveProg);
 document.addEventListener('visibilitychange', () => { if (document.hidden) saveProg(); });
 resetRun();

@@ -21,7 +21,7 @@ Read this at the start of every session. These are the owner's standing rules fo
 9. **Change only what was asked.** If you notice another problem, mention it instead of fixing it quietly.
 
 ## Project facts
-- There are no powers: the track power-ups and the shop powers were removed on 2026-11-23. Don't add any back unless the owner asks.
+- There are no powers and no coins. The track power-ups, the shop powers and coins were all removed on 2026-11-23. Every outfit is free. Don't add any of these back unless the owner asks.
 - Bosses: Molgrath, Scyrus and The Conductor. They take turns through `BOSS_ORDER`.
 - Debug mode: `?debug`, Ctrl+Shift+D, or the debug desktop shortcut. Debug keys open a practice stage where nothing can hurt you.
 - Testing in Chrome: the extension can't open file:// pages, so serve the folder with a small local node server. The game clamps each frame to 50 ms (`frame()`), and it pauses when the tab loses focus.
