@@ -1740,6 +1740,7 @@ const scy = (() => {
     const v = new THREE.Vector3().subVectors(b, a), len = v.length();
     const o = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.8, r, len, 12), m);
     o.position.copy(a).addScaledVector(v, 0.5); o.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), v.normalize());
+    o.userData.len0 = len;
     (parent || root).add(o); return o;
   };
   // tattered cloak
@@ -1763,11 +1764,15 @@ const scy = (() => {
     put(sph, skin, s * 1.15, 4.95, 0, [0.6, 0.55, 0.6]);
     for (let k = 0; k < 3; k++) { const c = put(coneG, bone, s * (1.2 + k * 0.12), 5.4, -0.25 + k * 0.25); c.rotation.z = -s * (0.4 + k * 0.15); }
   });
-  // arms gripping the scythe
+  // arms gripping the scythe. He faces you, so his own right hand is the one on the left of your screen.
+  // handR / handL are named from your side of the screen: handR is HIS left hand (the bottom one, where the scythe pivots)
+  // and handL is HIS right hand (the top one, nearer the blade).
   const handR = V(0.4, 3.1, 1.0), handL = V(0.15, 3.75, 0.95);
-  [[V(1.15, 4.8, 0), V(1.35, 3.7, 0.55), handR], [V(-1.15, 4.8, 0), V(-0.9, 3.9, 0.8), handL]].forEach(([S, E, H]) => {
-    limb(S, E, 0.32, skin); limb(E, H, 0.26, skin); put(sph, skin, E.x, E.y, E.z, [0.3, 0.3, 0.3]); put(sph, skin, H.x, H.y, H.z, [0.26, 0.26, 0.26]);
-  });
+  const arms = [[V(1.15, 4.8, 0), V(1.35, 3.7, 0.55), handR], [V(-1.15, 4.8, 0), V(-0.9, 3.9, 0.8), handL]].map(([S, E, H]) => ({
+    S, E0: E.clone(), H0: H.clone(),
+    upper: limb(S, E, 0.32, skin), fore: limb(E, H, 0.26, skin),
+    elbow: put(sph, skin, E.x, E.y, E.z, [0.3, 0.3, 0.3]), hand: put(sph, skin, H.x, H.y, H.z, [0.26, 0.26, 0.26])
+  }));
   // wings
   const ws = new THREE.Shape();
   ws.moveTo(0, 0); ws.lineTo(22, 26); ws.lineTo(58, 50); ws.lineTo(98, 40); ws.lineTo(88, 20); ws.lineTo(74, 6);
@@ -1832,7 +1837,7 @@ const scy = (() => {
   root.visible = false;
   scene.add(root);
   const bladeMid = new THREE.Object3D(); bladeMid.position.set(-1.8, 5.75, 0); model.add(bladeMid);
-  return { root, cloak, rags, wings, heads, scythe: { yaw, pitch, model, blade, bladeMat, edge, fire: bladeFire, bladeMid } };
+  return { root, cloak, rags, wings, heads, arms, scythe: { yaw, pitch, model, blade, bladeMat, edge, fire: bladeFire, bladeMid } };
 })();
 const PIVX = 0.4 * 1.15, REAP_R = 5.75, REAP_REL = 6.8, REAP_Y = -0.3;
 // the fire scythe charge: he dives at you, stops just in front of you, turns the scythe sideways and swings it
@@ -1848,6 +1853,23 @@ const SCY_CHARGE = {
   follow: 8,        // how quickly he slides over to your lane while still aiming
   lockedFollow: 14  // how quickly he settles into the lane once he has locked on
 };
+// during the fire scythe charge his right hand (the top one) slides onto the handle, so both hands really hold it
+const SCY_GRIP = {
+  gap: 0.7,         // how far up the handle his right hand sits above his left hand
+  elbowFollow: 0.5, // the elbow moves this much of the way the hand moves
+  blend: 8          // how quickly the hand moves onto the handle and back
+};
+let scyGrip = 0;    // 0 = arms in their normal pose, 1 = right hand on the handle
+const _gp = new THREE.Vector3(), _ge = new THREE.Vector3(), _gd = new THREE.Vector3(), _UP = new THREE.Vector3(0, 1, 0);
+const _AX = new THREE.Vector3(1, 0, 0), _AY = new THREE.Vector3(0, 1, 0);
+// stretches a limb so it runs from point a to point b
+function setLimb(o, a, b) {
+  _gd.subVectors(b, a); const len = _gd.length();
+  if (!(len > 0.001) || !o.userData.len0) return;   // nothing to stretch: leave it as it is
+  o.position.copy(a).addScaledVector(_gd, 0.5);
+  o.quaternion.setFromUnitVectors(_UP, _gd.multiplyScalar(1 / len));
+  o.scale.y = len / o.userData.len0;
+}
 const SCY_CHARGE_MIN = { speed: 5, wind: 0.2, swipeRel: 3 };   // safe floors, so a bad value can't freeze or break the attack
 // ---------- music notes: how the runner fights back ----------
 const strikeTex = canvasTex(64, 64, (g, w, h) => {
@@ -3335,6 +3357,15 @@ function animateBoss(dt, t) {
   else if (ph === 'ignite') { yaw = -0.25 * (1 - easeK(k * 3)); pitch = 0.2 + 0.25 * easeK(k * 3); }
   else if (ph === 'die') { yaw = 0.35; pitch = 0.75 + k * 1.2; }
   S.yaw.rotation.y = yaw; S.pitch.rotation.x = pitch; S.model.scale.x = flip;
+  // right hand on top, left hand on the bottom: during the charge his right hand slides onto the handle
+  const gripOn = BOSS.fromCharge && (ph === 'chargeUp' || ph === 'chargeDive' || ph === 'reapWind' || ph === 'reapSwing' || ph === 'reapOut');
+  scyGrip += ((gripOn ? 1 : 0) - scyGrip) * Math.min(1, dt * SCY_GRIP.blend);
+  const arm = scy.arms[1];
+  _gp.set(0, SCY_GRIP.gap, 0).applyAxisAngle(_AX, pitch).applyAxisAngle(_AY, yaw).add(S.yaw.position);   // a spot on the handle
+  _gp.lerpVectors(arm.H0, _gp, scyGrip);
+  _ge.subVectors(_gp, arm.H0).multiplyScalar(SCY_GRIP.elbowFollow).add(arm.E0);
+  setLimb(arm.upper, arm.S, _ge); setLimb(arm.fore, _ge, _gp);
+  arm.elbow.position.copy(_ge); arm.hand.position.copy(_gp);
   const fiery = S.fire[0].visible;
   S.bladeMat.emissive.setHex(fiery || ph === 'reapSwing' ? 0xff3a0a : 0x300808);
   S.edge.material.opacity = fiery ? 0.95 : 0.45 + 0.2 * Math.sin(t * 6);
@@ -4195,6 +4226,8 @@ function act(a) {
 // To add a scene, add one entry to DEBUG_TRIGGERS: the key, a label, and play() which starts the animation.
 // loop: true replays it whenever it finishes; tool: true is a setting (slow motion, freeze) rather than a scene;
 // tick() runs every frame while the scene plays. Letter keys work too, but not W A S D or P, which steer and pause.
+// again() runs when you press the key of the scene that is already playing (like pressing 3 again): the tuning
+// scenes use it to step to the next value, then the scene starts over so you can see the change.
 const DEBUG = { on: false, slow: 1, panel: null, freeze: false, holdAim: false, stage: false, cur: null, idleT: 0, lastToggle: 0 };
 const DEBUG_TRIGGERS = [
   { key: 'Digit1', label: 'Demon smash (whole attack)', loop: true, play() { startSlap(); } },
@@ -4210,11 +4243,16 @@ const DEBUG_TRIGGERS = [
     BOSS.heads = 1; updateBossBar(); nextQueue();
   } },
   { key: 'Digit7', label: 'Scyrus boss fight', loop: true, play() { debugBoss('scyrus'); } },
-  { key: 'KeyF', label: 'Scyrus fire scythe dive (flies at you)', loop: true, play() {
+  { key: 'KeyF', label: 'Scyrus fire scythe charge (whole attack)', loop: true, play() {
     debugBoss('scyrus'); BOSS.queue = ['charge']; bossPhase('idle');
   }, tick() {   // keep one more dive waiting, so he never runs out of moves and opens up for your guitar
     if (BOSS.active && !BOSS.queue.length && BOSS.phase !== 'opening') BOSS.queue = ['charge'];
   } },
+  { key: 'KeyG', label: 'Scyrus charge from the sideways wind-up', loop: true, play() { debugScyCharge('wind'); }, tick() { debugScyLoop('wind'); } },
+  { key: 'KeyH', get label() { return debugTuneLabel('speed', 'H'); }, loop: true, play() { debugScyCharge('dive'); }, tick() { debugScyLoop('dive'); }, again() { debugTuneStep('speed'); } },
+  { key: 'KeyJ', get label() { return debugTuneLabel('lockBefore', 'J'); }, loop: true, play() { debugScyCharge('dive'); }, tick() { debugScyLoop('dive'); }, again() { debugTuneStep('lockBefore'); } },
+  { key: 'KeyK', get label() { return debugTuneLabel('swipeRel', 'K'); }, loop: true, play() { debugScyCharge('dive'); }, tick() { debugScyLoop('dive'); }, again() { debugTuneStep('swipeRel'); } },
+  { key: 'KeyL', get label() { return debugTuneLabel('wind', 'L'); }, loop: true, play() { debugScyCharge('wind'); }, tick() { debugScyLoop('wind'); }, again() { debugTuneStep('wind'); } },
   { key: 'Digit8', label: 'The Conductor boss fight', loop: true, play() { debugBoss('switchman'); } },
   { key: 'KeyC', label: 'The Conductor Shunt Charge (3 in a row)', loop: true, play() {
     debugBoss('switchman'); BOSS.queue = ['shunt']; bossPhase('idle');
@@ -4224,6 +4262,40 @@ const DEBUG_TRIGGERS = [
   { key: 'Digit9', label: 'Freeze the picture on/off', tool: true, play() { DEBUG.freeze = !DEBUG.freeze; debugPanel(); } },
   { key: 'Digit0', label: 'Slow motion on/off', tool: true, play() { DEBUG.slow = DEBUG.slow === 1 ? 0.25 : 1; debugPanel(); } }
 ];
+// the values the tuning keys step through for Scyrus's fire scythe charge (the numbers live in SCY_CHARGE).
+// Changes last until you reload the page and also apply to the real game until then.
+const DEBUG_SCY_TUNE = {
+  speed: { name: 'Scyrus charge speed', unit: ' (old dive: 29)', values: [29, 44, 58, 72, 87, 100] },
+  lockBefore: { name: 'Scyrus lock-on', unit: ' s before he arrives', values: [0.15, 0.25, 0.35, 0.5, 0.75, 1.15] },
+  swipeRel: { name: 'Scyrus swipe distance', unit: ' in front of you', values: [4.5, 5.5, 6.8, 8, 10] },
+  wind: { name: 'Scyrus sideways wind-up', unit: ' s', values: [0.4, 0.55, 0.7, 0.8, 1.0, 1.3] }
+};
+const DEBUG_SCY_GAP = 0.4;   // seconds he rests after a swing before the scene plays it again
+function debugTuneLabel(k, key) { return DEBUG_SCY_TUNE[k].name + ': ' + SCY_CHARGE[k] + DEBUG_SCY_TUNE[k].unit + ' (press ' + key + ' again to change)'; }
+// steps a tuning value to the next one in its list (back to the first after the last)
+function debugTuneStep(k) {
+  const T = DEBUG_SCY_TUNE[k];
+  if (!T) { console.error('No debug tuning for', k); return; }
+  SCY_CHARGE[k] = T.values[(T.values.indexOf(SCY_CHARGE[k]) + 1) % T.values.length];
+  toast(T.name + ': ' + SCY_CHARGE[k] + T.unit);
+}
+// starts Scyrus's fire scythe charge partway through, with the scythe already burning.
+// from 'dive': he rises and dives at you. From 'wind': he is already in front of you, turning the scythe sideways.
+function debugScyCharge(from) {
+  if (!BOSS.active || BOSS.kind !== 'scyrus') debugBoss('scyrus');
+  BOSS.queue = ['charge'];   // a move always waiting, so he never stops to open up for your guitar
+  BOSS.lit = true; scy.scythe.fire.forEach(c => { c.visible = true; });
+  bossPhase('chargeUp');     // picks which way the swing goes and resets the lock-on
+  if (from === 'wind') {
+    BOSS.lane = p.lane; BOSS.locked = true;
+    BOSS.rel = Math.max(SCY_CHARGE_MIN.swipeRel, SCY_CHARGE.swipeRel); BOSS.x = LANES[p.lane]; BOSS.y = REAP_Y;
+    startChargeSwipe();
+  }
+}
+// once he is back in his normal spot after the swing, play the scene again
+function debugScyLoop(from) {
+  if (BOSS.active && BOSS.phase === 'idle' && BOSS.t > DEBUG_SCY_GAP) debugScyCharge(from);
+}
 // starts a boss right now without counting it in your saved stats
 function debugBoss(kind) {
   const keep = { fought: PROG.fought, next: PROG.next, f: PROG[PROG_KEYS[kind][0]] };
@@ -4241,6 +4313,7 @@ function debugClear() {
 function debugPlay(d) {
   if (d.tool) { d.play(); return; }
   if (DEBUG.stage && DEBUG.cur === d && DEBUG.holdAim) { DEBUG.holdAim = false; debugPanel(); return; }   // 3 again: let it smash
+  if (DEBUG.stage && DEBUG.cur === d && d.again) d.again();   // a tuning key pressed again: next value, then start over
   if (!DEBUG.stage || st.mode !== 'run') {
     resetRun(); clearWorld();
     st.mode = 'run'; DEBUG.stage = true;
