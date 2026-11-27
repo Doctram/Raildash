@@ -4189,6 +4189,11 @@ const DEBUG_TRIGGERS = [
     BOSS.heads = 1; updateBossBar(); nextQueue();
   } },
   { key: 'Digit7', label: 'Scyrus boss fight', loop: true, play() { debugBoss('scyrus'); } },
+  { key: 'KeyF', label: 'Scyrus fire scythe dive (flies at you)', loop: true, play() {
+    debugBoss('scyrus'); BOSS.queue = ['charge']; bossPhase('idle');
+  }, tick() {   // keep one more dive waiting, so he never runs out of moves and opens up for your guitar
+    if (BOSS.active && !BOSS.queue.length && BOSS.phase !== 'opening') BOSS.queue = ['charge'];
+  } },
   { key: 'Digit8', label: 'The Conductor boss fight', loop: true, play() { debugBoss('switchman'); } },
   { key: 'KeyC', label: 'The Conductor Shunt Charge (3 in a row)', loop: true, play() {
     debugBoss('switchman'); BOSS.queue = ['shunt']; bossPhase('idle');
