@@ -1892,7 +1892,7 @@ const PIVX = 0.4 * 1.15, REAP_R = 5.75, REAP_REL = 6.8, REAP_Y = -0.3;
 const SCY_CHARGE = {
   start: 70,        // how far ahead he starts the dive
   height: 9,        // how high up he starts the dive
-  speed: 72,        // how fast he dives toward you, in track units per second (the old dive was about 29)
+  speed: 116,       // how fast he dives toward you, in track units per second (the old dive was about 29)
   lockBefore: 0.5,  // he follows your lane until this many seconds before his scythe reaches you, then the strip turns red
                     // and he can't turn any more. 0.5 s gives you time to see the red strip and switch lanes (the demon smash gives 0.64 s)
   swipeRel: 6.8,    // how far in front of you he stops to swing (the same spot as his normal scythe sweep)
@@ -4399,7 +4399,7 @@ const DEBUG_TRIGGERS = [
 // the values the tuning keys step through for Scyrus's fire scythe charge (the numbers live in SCY_CHARGE).
 // Changes last until you reload the page and also apply to the real game until then.
 const DEBUG_SCY_TUNE = {
-  speed: { name: 'Scyrus charge speed', unit: ' (old dive: 29)', values: [29, 44, 58, 72, 87, 100] },
+  speed: { name: 'Scyrus charge speed', unit: ' (old dive: 29)', values: [29, 44, 58, 72, 87, 100, 116] },
   lockBefore: { name: 'Scyrus lock-on', unit: ' s before he arrives', values: [0.15, 0.25, 0.35, 0.5, 0.75, 1.15] },
   swipeRel: { name: 'Scyrus swipe distance', unit: ' in front of you', values: [4.5, 5.5, 6.8, 8] },   // past 8 his scythe could not reach you
   wind: { name: 'Scyrus sideways wind-up', unit: ' s', values: [0.4, 0.55, 0.7, 0.8, 1.0, 1.3] }
