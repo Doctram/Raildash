@@ -179,6 +179,11 @@ button:focus-visible{outline:4px solid var(--violet);outline-offset:3px}
 .pill:disabled{opacity:.45;cursor:not-allowed;box-shadow:2px 2px 0 var(--ink)}
 .overlay.sheet{align-items:flex-end;background:linear-gradient(rgba(20,8,6,0) 30%,rgba(20,8,6,.55));backdrop-filter:none;-webkit-backdrop-filter:none}
 .shop-card{width:min(640px,100%);max-height:58vh;gap:12px}
+.guide-body h3{margin:10px 0 4px;font-size:15px}
+.guide-body h3:first-child{margin-top:0}
+.guide-body p,.guide-body li{font-size:13px;line-height:1.45;margin:0 0 6px}
+.guide-body ul{margin:0 0 6px;padding-left:20px}
+.guide-body code{font-family:monospace;font-size:12px;background:rgba(0,0,0,.08);padding:1px 4px;border-radius:4px}
 .shop-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .shop-title{font-family:var(--display);font-size:clamp(22px,5vw,30px);margin:0;color:var(--sun);-webkit-text-stroke:1.5px var(--ink);text-shadow:3px 3px 0 var(--ink)}
 .shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px;overflow:auto;padding:4px 6px 6px 2px;min-height:0}
@@ -347,7 +352,20 @@ button:focus-visible{outline:4px solid var(--violet);outline-offset:3px}
       <button class="btn" id="resumeBtn">Keep running</button>
       <button class="btn alt" id="quitBtn">Menu</button>
     </div>
+    <div class="row small-row"><button class="pill" id="guideBtn">Scyrus charge guide</button></div>
     <div class="row small-row"><a class="pill spot" id="spotifyLink2" href="https://open.spotify.com/search/Mike%20Shinoda" target="_blank" rel="noopener">Change song on Spotify &#8599;</a></div>
+  </div>
+</div>
+
+<div class="overlay sheet" id="guide" hidden>
+  <div class="card shop-card" role="dialog" aria-label="Scyrus charge guide">
+    <div class="shop-head">
+      <h2 class="shop-title">Scyrus charge guide</h2>
+    </div>
+    <div class="guide-body" id="guideBody" style="overflow:auto;min-height:0;padding:2px 6px 6px 2px"></div>
+    <div class="row">
+      <button class="btn" id="guideBack">Back to pause</button>
+    </div>
   </div>
 </div>
 
@@ -4374,6 +4392,7 @@ const DEBUG_TRIGGERS = [
     play() { DEBUG.god = !DEBUG.god; toast(DEBUG.god ? 'God mode on' : 'God mode off'); debugPanel(); } },
   { key: 'KeyR', get label() { return 'Instant respawn: ' + (DEBUG.respawn ? 'ON' : 'OFF, dying shows the game-over screen'); }, tool: true, isOn: () => DEBUG.respawn,
     play() { DEBUG.respawn = !DEBUG.respawn; toast(DEBUG.respawn ? 'Instant respawn on' : 'Instant respawn off'); debugPanel(); } },
+  { key: 'KeyN', label: 'Scyrus charge guide (pause menu page)', tool: true, play() { if (st.mode === 'run') pause(); openGuide(); } },
   { key: 'Digit9', label: 'Freeze the picture on/off', tool: true, play() { DEBUG.freeze = !DEBUG.freeze; debugPanel(); } },
   { key: 'Digit0', label: 'Slow motion on/off', tool: true, play() { DEBUG.slow = DEBUG.slow === 1 ? 0.25 : 1; debugPanel(); } }
 ];
@@ -4589,6 +4608,7 @@ const keyMap = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'ri
 window.addEventListener('keydown', e => {
   const tag = (e.target && e.target.tagName) || '';
   if (tag === 'INPUT' || tag === 'TEXTAREA') { if (e.code === 'Escape') e.target.blur(); return; }   // typing a save code, not playing
+  if (!$('guide').hidden) { if (e.code === 'Escape' || e.code === 'KeyP' || e.code === 'KeyN') { e.preventDefault(); closeGuide(); } return; }
   if (debugKey(e)) return;
   if (!$('prog').hidden) { if (e.code === 'Escape') { e.preventDefault(); closeProg(); } return; }
   if (shopOpen) { if (e.code === 'Escape') { e.preventDefault(); closeShop(); } return; }
@@ -4743,6 +4763,46 @@ function openProg() {
     : 'Automatic saving is off in this browser, so the code is the only way to keep your progress.';
   renderProg(); $('progBack').focus();
 }
+// ---------- the Scyrus charge guide (pause menu) ----------
+// A page in the pause menu that explains his fire scythe charge and how to tune it. Every number is read from
+// the game's own constants when the page opens, so it stays right after you change them in debug or in the file.
+const GUIDE_OLD_SPEED = 29;   // his old, slow dive, shown for comparison
+function guideNum(v) { return Number(v.toFixed(2)); }   // 0.6500001 shows as 0.65
+function renderGuide() {
+  const C = SCY_CHARGE, gap = SCY_SWING2.gap, spare = scySwingSpare(gap);
+  const fair = spare >= 0
+    ? 'In the tightest lane you have <b>' + guideNum(spare) + ' s</b> to spare.'
+    : '<b>Right now the gap is too short:</b> in the tightest lane you can’t land and jump again in time.';
+  $('guideBody').innerHTML =
+    '<h3>1. The dive</h3>' +
+    '<p>He rises, sets his scythe on fire and dives at you at speed <b>' + C.speed + '</b>. His old dive was about ' + GUIDE_OLD_SPEED + '.</p>' +
+    '<p>While he aims, a <b>yellow strip</b> on the track shows his lane, and he follows you if you move. <b>' + C.lockBefore + ' s</b> before his scythe reaches you, the strip turns <b>red</b> and he can’t turn any more. If you are still in that lane, the scythe kills you.</p>' +
+    '<h3>2. The first swing</h3>' +
+    '<p>He stops just in front of you and holds the scythe sideways for <b>' + C.wind + ' s</b>. That is your warning. Then he swings it across every lane, so you have to jump.</p>' +
+    '<h3>3. The swing back</h3>' +
+    '<p>He waits <b>' + gap + ' s</b>, then swings straight back the other way at the same speed. This swing has <b>no warning of its own</b> on purpose: the first warning covers both.</p>' +
+    '<p>A jump keeps you in the air for ' + JUMP_AIR + ' s, so you must land and jump again. ' + fair + '</p>' +
+    '<p>His scythe keeps burning through both swings and goes out when he flies back to his place.</p>' +
+    '<h3>How to dodge it</h3>' +
+    '<ul><li>Wait for the strip to turn red, then switch lanes. If you move early, he just follows you.</li>' +
+    '<li>Jump when he swings. Jump again as soon as you land.</li></ul>' +
+    '<h3>Changing the numbers</h3>' +
+    '<p>Open <code>index.html</code> in Notepad and use Ctrl+F. The charge speed is the line starting <code>speed:</code> inside <code>SCY_CHARGE</code>. The gap is in <code>const SCY_SWING2</code>. A change in the file is <b>permanent</b>.</p>' +
+    '<p>In debug mode, the <code>-</code> and <code>+</code> keys change the speed and the <code>[</code> and <code>]</code> keys change the gap. Those changes <b>go away when you reload</b> the page.</p>' +
+    '<ul><li><b>Too easy?</b> Make the charge faster, or the gap shorter.</li>' +
+    '<li><b>Too hard?</b> Make the charge slower, or the gap longer.</li></ul>';
+}
+function openGuide() {
+  if (st.mode !== 'paused') return;   // only from the pause menu, so the game is never running behind it
+  show('paused', false); show('guide', true);
+  renderGuide(); $('guideBody').scrollTop = 0; $('guideBack').focus();
+}
+function closeGuide() {
+  show('guide', false);
+  if (st.mode === 'paused') { show('paused', true); $('guideBtn').focus(); }
+}
+$('guideBtn').addEventListener('click', openGuide);
+$('guideBack').addEventListener('click', closeGuide);
 function closeProg() { show('prog', false); show('menu', true); refreshMenu(); $('progBtn').focus(); }
 $('progBtn').addEventListener('click', openProg);
 $('progBack').addEventListener('click', closeProg);
