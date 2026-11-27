@@ -348,6 +348,7 @@ button:focus-visible{outline:4px solid var(--violet);outline-offset:3px}
 <div class="overlay" id="paused" hidden>
   <div class="card">
     <h2 class="over-title" style="color:var(--sun)">Paused</h2>
+    <p class="hint" id="debugNote" hidden style="max-width:420px;margin:0 auto;text-align:left;line-height:1.45"><b>Note:</b> In debug, you see the new version. In a normal run, players keep the old one. When you say "put it in the game", I remove the switch and only the new version stays. Your experiments are still saved to GitHub along the way, but they stay switched off for players.</p>
     <div class="row">
       <button class="btn" id="resumeBtn">Keep running</button>
       <button class="btn alt" id="quitBtn">Menu</button>
@@ -4265,6 +4266,7 @@ function startRun() {
 function pause() {
   if (st.mode !== 'run') return;
   st.mode = 'paused'; show('paused', true); applyMusic();
+  $('debugNote').hidden = !DEBUG.on;   // the note about experiments only shows in debug mode, never to players
   $('resumeBtn').focus();
 }
 function resume() {
