@@ -48,7 +48,22 @@ body{
   background:var(--sun);border:2px solid var(--ink);box-shadow:2px 2px 0 var(--ink);
 }
 .chip.dist{background:var(--paper)}
-.hud-right{display:flex;gap:8px;align-items:center}
+.hud-right{display:flex;gap:8px;align-items:center;position:relative}
+/* debug only: the skull that flashes under the pause button when a hit would have killed you */
+:root{--devil:#6e1410;--devil-dark:#3a0606;--devil-eye:#1a0303;--skull-size:34px}
+.dskull{position:absolute;top:calc(100% + 8px);right:4px;width:var(--skull-size);height:var(--skull-size);pointer-events:none}
+.dskull svg{display:block;width:100%;height:100%;overflow:visible}
+.dskull.go{animation:dskull 1s ease-out forwards}
+@keyframes dskull{
+  0%{transform:scale(.4);opacity:0}
+  12%{transform:scale(1.2);opacity:1}
+  22%{transform:scale(1)}
+  40%{opacity:1}
+  50%{opacity:.35}
+  60%{opacity:1}
+  85%{opacity:1}
+  100%{transform:scale(1);opacity:0}
+}
 .icon-btn{
   pointer-events:auto;width:42px;height:42px;border-radius:12px;border:3px solid var(--ink);
   background:var(--paper);box-shadow:3px 3px 0 var(--ink);font-family:var(--display);font-size:15px;color:var(--ink);cursor:pointer;
@@ -193,6 +208,20 @@ button:focus-visible{outline:4px solid var(--violet);outline-offset:3px}
   </div>
   <div class="hud-right">
     <button class="icon-btn" id="pauseBtn" aria-label="Pause">II</button>
+    <div class="dskull" id="dskull" hidden aria-hidden="true">
+      <svg viewBox="0 0 64 64">
+        <g stroke="var(--ink)" stroke-width="3" stroke-linejoin="round">
+          <path d="M18 21 C10 17 4 10 5 1 C10 8 17 11 26 13 Z" fill="var(--devil-dark)"/>
+          <path d="M46 21 C54 17 60 10 59 1 C54 8 47 11 38 13 Z" fill="var(--devil-dark)"/>
+          <path d="M32 9 C18 9 9 19 9 32 C9 40 13 45 19 47 L19 54 C19 57 21 59 24 59 L40 59 C43 59 45 57 45 54 L45 47 C51 45 55 40 55 32 C55 19 46 9 32 9 Z" fill="var(--devil)"/>
+        </g>
+        <path d="M17 22 C20 16 25 14 30 14" stroke="#a8301f" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>
+        <ellipse cx="23" cy="33" rx="6.5" ry="7" fill="var(--devil-eye)"/>
+        <ellipse cx="41" cy="33" rx="6.5" ry="7" fill="var(--devil-eye)"/>
+        <path d="M32 40 L28.5 46 L35.5 46 Z" fill="var(--devil-eye)"/>
+        <path d="M27 51 V59 M32 51 V59 M37 51 V59" stroke="var(--devil-eye)" stroke-width="2.5"/>
+      </svg>
+    </div>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -4167,7 +4196,8 @@ function toMenu() {
   $('startBtn').focus();
 }
 function crash(reason) {
-  if (st.mode !== 'run' || p.soloT >= 0 || DEBUG.stage) return;   // nothing touches him mid-solo or on the debug stage
+  if (st.mode !== 'run' || p.soloT >= 0) return;   // nothing touches him mid-solo
+  if (DEBUG.stage) { debugSkull(); return; }        // the debug stage can't kill you: it flashes the skull to show this hit would have
   st.mode = 'dying'; p.dieT = 0; st.reason = reason;
   // fall to whatever is under you, not onto the roof of the train you just hit
   p.floorY = Math.min(p.y, supportAt(p.x, p.d - 1.5));
@@ -4325,9 +4355,25 @@ function debugPlay(d) {
   d.play();
   debugPanel();
 }
+// the skull under the pause button: shows for DEBUG_SKULL_TIME seconds each time you would have died on the debug stage
+const DEBUG_SKULL_TIME = 1.0;
+let debugSkullTimer = 0;
+function debugSkull() {
+  const el = $('dskull');
+  if (!el) { console.error('Debug skull is missing from the page'); return; }
+  el.hidden = false;
+  el.style.animationDuration = DEBUG_SKULL_TIME + 's';
+  el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');   // restart the flash if it is already showing
+  clearTimeout(debugSkullTimer);
+  debugSkullTimer = setTimeout(() => { el.hidden = true; el.classList.remove('go'); }, DEBUG_SKULL_TIME * 1000);
+}
+function debugHideSkull() {
+  const el = $('dskull'); clearTimeout(debugSkullTimer);
+  if (el) { el.hidden = true; el.classList.remove('go'); }
+}
 function debugEndStage() {
   if (!DEBUG.stage) return;
-  DEBUG.stage = false; DEBUG.cur = null; DEBUG.freeze = false;
+  DEBUG.stage = false; DEBUG.cur = null; DEBUG.freeze = false; debugHideSkull();
   debugClear(); debugPanel();
 }
 // runs every frame of the practice stage: keeps the track empty and you safe, and replays the scene
